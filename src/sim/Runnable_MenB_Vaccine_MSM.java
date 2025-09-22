@@ -302,7 +302,7 @@ public class Runnable_MenB_Vaccine_MSM extends Runnable_ClusterModel_MultiTransm
 			countMap = (HashMap<Integer, int[]>) sim_output.get(key);
 			fileName = String.format(filePrefix + Simulation_ClusterModelTransmission.FILENAME_CUMUL_TREATMENT_PERSON,
 					cMAP_SEED, sIM_SEED);
-			printCountMap(countMap, fileName, "Inf_%d_Gender_%d", new int[] { NUM_INF, NUM_GENDER },
+			printCountMap(countMap, fileName, "Inf_%d_Gender_%d", new int[] { NUM_INF, NUM_GRP },
 					COL_SEL_INF_GENDER);
 
 		}
@@ -313,7 +313,7 @@ public class Runnable_MenB_Vaccine_MSM extends Runnable_ClusterModel_MultiTransm
 			countMap = (HashMap<Integer, int[]>) sim_output.get(key);
 			fileName = String.format(filePrefix + Simulation_ClusterModelTransmission.FILENAME_CUMUL_INCIDENCE_PERSON,
 					cMAP_SEED, sIM_SEED);
-			printCountMap(countMap, fileName, "Inf_%d_Gender_%d", new int[] { NUM_INF, NUM_GENDER },
+			printCountMap(countMap, fileName, "Inf_%d_Gender_%d", new int[] { NUM_INF, NUM_GRP },
 					COL_SEL_INF_GENDER);
 
 			key = String.format(SIM_OUTPUT_KEY_CUMUL_INCIDENCE_SITE,
@@ -322,7 +322,7 @@ public class Runnable_MenB_Vaccine_MSM extends Runnable_ClusterModel_MultiTransm
 			countMap = (HashMap<Integer, int[]>) sim_output.get(key);
 			fileName = String.format(filePrefix + Simulation_ClusterModelTransmission.FILENAME_CUMUL_INCIDENCE_SITE,
 					cMAP_SEED, sIM_SEED);
-			printCountMap(countMap, fileName, "Inf_%d_Gender_%d_Site_%d", new int[] { NUM_INF, NUM_GENDER, NUM_SITE },
+			printCountMap(countMap, fileName, "Inf_%d_Gender_%d_Site_%d", new int[] { NUM_INF, NUM_GRP, NUM_SITE },
 					COL_SEL_INF_GENDER_SITE);
 
 		}
@@ -335,7 +335,7 @@ public class Runnable_MenB_Vaccine_MSM extends Runnable_ClusterModel_MultiTransm
 			fileName = String.format(
 					filePrefix + "Infectious_" + Simulation_ClusterModelTransmission.FILENAME_PREVALENCE_PERSON,
 					cMAP_SEED, sIM_SEED);
-			printCountMap(countMap, fileName, "Inf_%d_Gender_%d", new int[] { NUM_INF, NUM_GENDER },
+			printCountMap(countMap, fileName, "Inf_%d_Gender_%d", new int[] { NUM_INF, NUM_GRP },
 					COL_SEL_INF_GENDER);
 
 			key = String.format(SIM_OUTPUT_KEY_INFECTIOUS_SITE_COUNT,
