@@ -3,7 +3,9 @@ package sim;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -40,10 +42,10 @@ public class Simulation_MenB_Vaccine extends Simulation_ClusterModelTransmission
 			return null;
 		}
 	}
-
 	
+		
 	@Override
-	protected void loadAllContactMap(File[] preGenClusterMap, HashMap<Long, File[]> cmap_file_collection,
+	protected void loadAllContactMap(ArrayList<File> preGenClusterMap, HashMap<Long, ArrayList<File>> cmap_file_collection,
 			HashMap<Long, ContactMap> cMap_Map) throws FileNotFoundException, IOException, InterruptedException {
 
 		// Single load only
@@ -54,7 +56,7 @@ public class Simulation_MenB_Vaccine extends Simulation_ClusterModelTransmission
 			long cMap_seed = Long.parseLong(m.group(1));
 			ContactMap cMap = extractedCMapfromFile(element);
 			cMap_Map.put(cMap_seed, cMap);
-			cmap_file_collection.put(cMap_seed, new File[] { element });
+			cmap_file_collection.put(cMap_seed, new ArrayList<File>(List.of(element)));
 
 		}
 
