@@ -7,8 +7,6 @@ import java.util.HashMap;
 import java.util.Properties;
 import java.util.regex.Pattern;
 
-import relationship.ContactMap;
-
 public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 
 	public static final Pattern PROP_TYPE_PATTERN = Pattern.compile("ClusterModel_MenB_Vaccine_RMP");
