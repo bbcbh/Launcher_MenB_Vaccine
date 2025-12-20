@@ -12,7 +12,7 @@ import java.util.regex.Pattern;
 
 import relationship.ContactMap;
 
-public class Simulation_MenB_Vaccine extends Simulation_ClusterModelTransmission {
+public class Simulation_MenB_Vaccine extends Simulation_MetaPopulation {
 
 	public static void main(String[] args) throws IOException, InterruptedException {
 		final String USAGE_INFO = String.format(
@@ -35,10 +35,13 @@ public class Simulation_MenB_Vaccine extends Simulation_ClusterModelTransmission
 		String popType = (String) loadedProperties
 				.get(SimulationInterface.PROP_NAME[SimulationInterface.PROP_POP_TYPE]);
 
-		if (Runnable_MenB_Vaccine_MSM.PROP_TYPE_PATTERN.matcher(popType).matches()) {
-			return new Runnable_MenB_Vaccine_MSM(cMap_seed, sim_seed, baseContactMapMapping.get(cMap_seed),
-					loadedProperties);
-		} else {
+		if (Runnable_MenB_Vaccine_MSM.PROP_TYPE_PATTERN.matcher(popType).matches()) {					
+			//return new Runnable_MenB_Vaccine_MSM(cMap_seed, sim_seed, baseContactMapMapping.get(cMap_seed),
+			//		loadedProperties);
+			return new Runnable_MenB_Vaccine_MSM(cMap_seed, sim_seed, loadedProperties);
+		} else if(Runnable_MenB_Vaccine_RMP.PROP_TYPE_PATTERN.matcher(popType).matches()) {			
+			return new Runnable_MenB_Vaccine_RMP(cMap_seed, sim_seed, loadedProperties);
+		}else {
 			return null;
 		}
 	}
@@ -61,5 +64,7 @@ public class Simulation_MenB_Vaccine extends Simulation_ClusterModelTransmission
 		}
 
 	}
+
+	
 
 }
