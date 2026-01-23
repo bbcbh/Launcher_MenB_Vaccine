@@ -1,6 +1,9 @@
 package test;
 
+import java.io.File;
+import java.io.FileFilter;
 import java.io.IOException;
+import java.nio.file.Files;
 
 import sim.Simulation_ClusterModelTransmission;
 import sim.Simulation_MenB_Vaccine;
@@ -23,6 +26,19 @@ public class Test_MenB_Vaccine_Simulations {
 
 		for (String dirName : dirNames) {
 			arg_def[0] = dirName;
+			
+			File[] old_zips = (new File(dirName)).listFiles(new FileFilter() {				
+				@Override
+				public boolean accept(File pathname) {					
+					return pathname.getName().endsWith("7z");
+				}
+			});			
+			for(File old_zip: old_zips) {
+				Files.deleteIfExists(old_zip.toPath());
+			}
+			
+			
+			
 			Simulation_ClusterModelTransmission.launch(arg_def, new Simulation_MenB_Vaccine());
 		}
 	}
