@@ -8,7 +8,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map.Entry;
 import java.util.Properties;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import person.AbstractIndividualInterface;
@@ -28,151 +27,25 @@ public class Runnable_MenB_Vaccine_MSM extends Runnable_MenB_Vaccine {
 	// "Infectious_" + Simulation_ClusterModelTransmission.FILENAME_PREVALENCE_SITE
 	private static final int[] COL_SEL_INF_SITE = new int[] { 5, 6, 7 };
 
-	// Key = Time
-	// Value = Entries in vaccine_allocate_all_default
-	protected HashMap<Integer, double[]> vaccine_allocation_setting;
-
-	protected double[] current_vaccine_allocation = null;
+	//protected double[] current_vaccine_allocation = null;
 
 	public Runnable_MenB_Vaccine_MSM(long cMap_seed, long sim_seed, Properties prop) {
 		super(cMap_seed, sim_seed, prop, num_inf, num_site, num_act);
-
-		vaccine_allocation_setting = new HashMap<>();
-
-		for (double[] vac_all : vaccine_allocate_all_default) {
-			vaccine_allocation_setting.put((int) vac_all[0], Arrays.copyOfRange(vac_all, 1, vac_all.length));
-		}
 	}
 
 	@Override
 	public int getPersonGrp(Integer personId) {
 		// MSM only
 		return 2;
-	}
-
-	@Override
-	public ArrayList<Integer> loadOptParameter(String[] parameter_settings, double[] point, int[][] seedInfectNum,
-			boolean display_only) {
-
-		ArrayList<String> common_parameter_name = new ArrayList<>();
-		ArrayList<Double> common_parameter_value = new ArrayList<>();
-
-		for (int i = 0; i < parameter_settings.length; i++) {
-
-			if (parameter_settings[i].startsWith(PROP_VACCINE_ALLOCATIONS)) {
-				Matcher m = Pattern.compile(PROP_VACCINE_ALLOCATIONS + "_(\\d+)_(\\d+)").matcher(parameter_settings[i]);
-				boolean suc = m.matches();
-				if (suc) {
-					try {
-						int row = Integer.parseInt(m.group(1));
-						int index = Integer.parseInt(m.group(2));
-
-						double[] def_entry = vaccine_allocate_all_default[row];
-
-						if (index == 0) {
-							double[] ent = vaccine_allocation_setting.remove((int) def_entry[0]);
-							vaccine_allocation_setting.put((int) point[i], ent);
-							vaccine_allocate_all_default[row][0] = (int) point[i];
-						} else {
-							vaccine_allocation_setting.get((int) def_entry[0])[index - 1] = point[i];
-						}
-
-					} catch (ArrayIndexOutOfBoundsException e) {
-						suc = false;
-					}
-				}
-
-				if (!suc) {
-					System.err.printf("Warning: Parameter for %s type mismatch. Value ignored.\n",
-							parameter_settings[i]);
-				}
-
-			} else {
-				common_parameter_name.add(parameter_settings[i]);
-				common_parameter_value.add(point[i]);
-			}
-		}
-
-		Double[] common_parameter_val_obj = common_parameter_value.toArray(new Double[common_parameter_value.size()]);
-
-		double[] common_parameter_val = new double[common_parameter_value.size()];
-		for (int i = 0; i < common_parameter_val.length; i++) {
-			common_parameter_val[i] = common_parameter_val_obj[i].doubleValue();
-		}
-
-		return super.loadOptParameter(common_parameter_name.toArray(new String[common_parameter_name.size()]),
-				common_parameter_val, seedInfectNum, display_only);
-	}
-
-	@Override
-	protected void testPerson(int currentTime, int pid_t, int infIncl, int siteIncl,
-			int[][] cumul_treatment_by_person) {
-		super.testPerson(currentTime, pid_t, infIncl, siteIncl, cumul_treatment_by_person);
-		// Vaccination by testing
-
-		int pid = Math.abs(pid_t);
-
-		if (current_vaccine_allocation != null && !vaccination_history.containsKey(pid)) {
-			// Val =
-			// {RISK_GRP_INC,PROB_DOSE_0_AT_TEST,PROB_NEXT_DOSE_0,NEXT_DOSE_AT_0,PROB_NEXT_DOSE_1,
-			// NEXT_DOSE_AT_1,...}
-
-			int riskGrp = risk_cat_map.get(pid);
-			if ((((int) current_vaccine_allocation[0]) & 1 << riskGrp) != 0) {
-				double pDoseAtTest = current_vaccine_allocation[1];
-				if (rng_vaccine.nextDouble() < pDoseAtTest) {
-					// First dose
-					ArrayList<Integer> vac_hist = new ArrayList<>();
-					vac_hist.add(currentTime);
-					vaccination_history.put(pid, vac_hist);
-
-					// Check for booster
-					boolean boosterEnd = false;
-
-					for (int booster_prob_index = 2; booster_prob_index < current_vaccine_allocation.length
-							&& !boosterEnd; booster_prob_index += 2) {
-
-						boosterEnd = !(rng_vaccine.nextDouble() < current_vaccine_allocation[booster_prob_index]);
-						if (!boosterEnd) {
-							double mean_booster_schedule = current_vaccine_allocation[booster_prob_index + 1];
-							int booster_time = currentTime + (int) Math.round(mean_booster_schedule);
-
-							ArrayList<Integer> booster_pid = schedule_booster.get(booster_time);
-							if (booster_pid == null) {
-								booster_pid = new ArrayList<>();
-								schedule_booster.put(booster_time, booster_pid);
-							}
-							booster_pid.add(pid);
-
-						}
-
-					}
-
-				}
-
-			}
-
-		}
-
-	}
+	}	
 
 	@SuppressWarnings("unchecked")
 	@Override
 	protected void postTimeStep(int currentTime) {
 		super.postTimeStep(currentTime);
 		// Preset for next turn
-		if (currentTime != 0) {
-			int nextTime = currentTime + 1;
-			if (vaccine_allocation_setting.containsKey(nextTime)) {
-				double[] vac_alloc = vaccine_allocation_setting.get(nextTime);
-				current_vaccine_allocation = Arrays.copyOf(vac_alloc, vac_alloc.length);
-			}
-			if (schedule_booster.containsKey(nextTime)) {
-				ArrayList<Integer> booster_pid = schedule_booster.remove(nextTime);
-				for (Integer pid : booster_pid) {
-					vaccination_history.get(pid).add(nextTime);
-				}
-			}
+		if (currentTime != 0) {					
+			updateCurrentVaccinationStrategy(currentTime + 1);				
 		}
 
 		if (currentTime % nUM_TIME_STEPS_PER_SNAP == 0) {
@@ -215,15 +88,15 @@ public class Runnable_MenB_Vaccine_MSM extends Runnable_MenB_Vaccine {
 				PrintWriter pWri = new PrintWriter(new java.io.File(baseDir, fileName));
 				Integer[] timeArr = countMap.keySet().toArray(new Integer[0]);
 				Arrays.sort(timeArr);
-				
+
 				pWri.println("Time,Ever_Vaccinated,Multi_Doses,Last_Dose_5YPlus");
-				for(Integer time : timeArr) {					
+				for (Integer time : timeArr) {
 					int[] ent = countMap.get(time);
-					pWri.printf("%d,%d,%d,%d\n", time,
-							ent[SIM_OUTPUT_INDEX_VACC_COVERAGE_EVER_VACCINATED],
-							ent[SIM_OUTPUT_INDEX_VACC_COVERAGE_MULTI_DOSES], ent[SIM_OUTPUT_INDEX_VACC_COVERAGE_LAST_DOSE_5YRPLUS]);
-				}				
-				
+					pWri.printf("%d,%d,%d,%d\n", time, ent[SIM_OUTPUT_INDEX_VACC_COVERAGE_EVER_VACCINATED],
+							ent[SIM_OUTPUT_INDEX_VACC_COVERAGE_MULTI_DOSES],
+							ent[SIM_OUTPUT_INDEX_VACC_COVERAGE_LAST_DOSE_5YRPLUS]);
+				}
+
 				pWri.close();
 			} catch (IOException ex) {
 				ex.printStackTrace(System.err);
@@ -248,8 +121,7 @@ public class Runnable_MenB_Vaccine_MSM extends Runnable_MenB_Vaccine {
 			countMap = (HashMap<Integer, int[]>) sim_output.get(key);
 			fileName = String.format(filePrefix + Simulation_ClusterModelTransmission.FILENAME_CUMUL_INCIDENCE_PERSON,
 					cMAP_SEED, sIM_SEED);
-			printCountMap(countMap, fileName, "Inf_%d_Gender_%d", new int[] { NUM_INF, NUM_GRP },
-					COL_SEL_INF_GENDER);
+			printCountMap(countMap, fileName, "Inf_%d_Gender_%d", new int[] { NUM_INF, NUM_GRP }, COL_SEL_INF_GENDER);
 
 			key = String.format(SIM_OUTPUT_KEY_CUMUL_INCIDENCE_SITE,
 					Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_INCIDENCE_FILE);
@@ -270,8 +142,7 @@ public class Runnable_MenB_Vaccine_MSM extends Runnable_MenB_Vaccine {
 			fileName = String.format(
 					filePrefix + "Infectious_" + Simulation_ClusterModelTransmission.FILENAME_PREVALENCE_PERSON,
 					cMAP_SEED, sIM_SEED);
-			printCountMap(countMap, fileName, "Inf_%d_Gender_%d", new int[] { NUM_INF, NUM_GRP },
-					COL_SEL_INF_GENDER);
+			printCountMap(countMap, fileName, "Inf_%d_Gender_%d", new int[] { NUM_INF, NUM_GRP }, COL_SEL_INF_GENDER);
 
 			key = String.format(SIM_OUTPUT_KEY_INFECTIOUS_SITE_COUNT,
 					Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_PREVAL_FILE);
@@ -282,7 +153,7 @@ public class Runnable_MenB_Vaccine_MSM extends Runnable_MenB_Vaccine {
 			printCountMap(countMap, fileName, "Inf_%d_Site_%d", new int[] { NUM_INF, NUM_SITE }, COL_SEL_INF_SITE);
 
 		}
-		
+
 		if ((simSetting & 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_TRACK_INFECTION_HISTORY) > 0) {
 
 			PrintWriter pWri;
@@ -292,7 +163,7 @@ public class Runnable_MenB_Vaccine_MSM extends Runnable_MenB_Vaccine {
 				pWri = new PrintWriter(new File(baseDir,
 						String.format(filePrefix + Simulation_ClusterModelTransmission.FILENAME_INFECTION_HISTORY,
 								cMAP_SEED, sIM_SEED)));
-				pWri.println("ID,INF_ID,History");								
+				pWri.println("ID,INF_ID,History");
 				for (Integer pid : pids) {
 					ArrayList<ArrayList<Integer>> hist = infection_history.get(pid);
 					for (int infId = 0; infId < hist.size(); infId++) {
@@ -312,7 +183,6 @@ public class Runnable_MenB_Vaccine_MSM extends Runnable_MenB_Vaccine {
 				e.printStackTrace(System.err);
 			}
 		}
-		
 
 		if (print_progress != null && runnableId != null) {
 			try {
@@ -323,6 +193,10 @@ public class Runnable_MenB_Vaccine_MSM extends Runnable_MenB_Vaccine {
 			}
 		}
 
+	}
+	
+	protected int getVaccineGrp(int pid) {
+		return risk_cat_map.get(pid);
 	}
 
 }
