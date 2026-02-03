@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Properties;
+import java.util.Map.Entry;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -49,7 +50,7 @@ public abstract class Runnable_MenB_Vaccine extends Runnable_MetaPopulation_Mult
 																							// probability per test
 
 	// Key = GRP_INC, Val = vaccine_allocate_all rows
-	protected HashMap<Integer, double[]> current_vaccination_strategy_by_grp_inc = new HashMap<>();		
+	protected HashMap<Integer, double[]> current_vaccination_strategy_by_grp_inc = new HashMap<>();
 	// Key = PID , Val = Dose_time
 	protected HashMap<Integer, ArrayList<Integer>> vaccination_history = new HashMap<>();
 	// Key = Time , Val = PIDS
@@ -57,9 +58,6 @@ public abstract class Runnable_MenB_Vaccine extends Runnable_MetaPopulation_Mult
 
 	// RNG
 	protected RandomGenerator rng_vaccine;
-	
-	
-	
 
 	public Runnable_MenB_Vaccine(long cMap_seed, long sim_seed, Properties prop, int num_inf, int num_site,
 			int num_act) {
@@ -108,6 +106,7 @@ public abstract class Runnable_MenB_Vaccine extends Runnable_MetaPopulation_Mult
 		return trans_prob;
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	protected void postTimeStep(int currentTime) {
 		super.postTimeStep(currentTime);
@@ -129,9 +128,35 @@ public abstract class Runnable_MenB_Vaccine extends Runnable_MetaPopulation_Mult
 			}
 			vaccine_allocate_next_row = 0;
 		}
+
+		// Preset for next turn
+		if (currentTime != 0) {
+			updateCurrentVaccinationStrategy(currentTime + 1);
+		}
+
+		if (currentTime % nUM_TIME_STEPS_PER_SNAP == 0) {
+			HashMap<Integer, int[]> countMap;
+			countMap = (HashMap<Integer, int[]>) sim_output.get(SIM_OUTPUT_KEY_VACC_COVERAGE);
+			if (countMap == null) {
+				countMap = new HashMap<>();
+				sim_output.put(SIM_OUTPUT_KEY_VACC_COVERAGE, countMap);
+			}
+			int[] dose_stat = new int[LENGTH_SIM_OUTPUT_INDEX_VACC_COVERAGE];
+			dose_stat[SIM_OUTPUT_INDEX_VACC_COVERAGE_EVER_VACCINATED] = vaccination_history.size();
+			for (Entry<Integer, ArrayList<Integer>> ent : vaccination_history.entrySet()) {
+				if (ent.getValue().size() > 1) {
+					dose_stat[SIM_OUTPUT_INDEX_VACC_COVERAGE_MULTI_DOSES]++;
+				}
+				if ((currentTime - ent.getValue().get(ent.getValue().size() - 1)) > 5
+						* AbstractIndividualInterface.ONE_YEAR_INT) {
+					dose_stat[SIM_OUTPUT_INDEX_VACC_COVERAGE_LAST_DOSE_5YRPLUS]++;
+				}
+			}
+			countMap.put(currentTime, dose_stat);
+		}
+
 	}
-	
-	
+
 	protected abstract int getVaccineGrp(int pid);
 
 	@Override
@@ -180,19 +205,19 @@ public abstract class Runnable_MenB_Vaccine extends Runnable_MetaPopulation_Mult
 	}
 
 	protected void updateCurrentVaccinationStrategy(int updateTime) {
-		
+
 		while (vaccine_allocate_next_row < vaccine_allocate_all.length
 				&& vaccine_allocate_all[vaccine_allocate_next_row][VACCINE_ALLOCATE_GLOBAL_START] < updateTime) {
 			vaccine_allocate_next_row++;
 		}
-		
-		for(int r = vaccine_allocate_next_row; r  < vaccine_allocate_all.length; r++) {
-			if(vaccine_allocate_all[r][VACCINE_ALLOCATE_GLOBAL_START] == updateTime) {
-				int grpInc = (int) (vaccine_allocate_all[r][VACCINE_ALLOCATE_GRP_INC]);				
+
+		for (int r = vaccine_allocate_next_row; r < vaccine_allocate_all.length; r++) {
+			if (vaccine_allocate_all[r][VACCINE_ALLOCATE_GLOBAL_START] == updateTime) {
+				int grpInc = (int) (vaccine_allocate_all[r][VACCINE_ALLOCATE_GRP_INC]);
 				current_vaccination_strategy_by_grp_inc.put(grpInc, vaccine_allocate_all[r]);
-			}			
-		}								
-	
+			}
+		}
+
 		if (schedule_booster.containsKey(updateTime)) {
 			ArrayList<Integer> booster_pid = schedule_booster.remove(updateTime);
 			for (Integer pid : booster_pid) {
@@ -202,47 +227,49 @@ public abstract class Runnable_MenB_Vaccine extends Runnable_MetaPopulation_Mult
 	}
 
 	@Override
-	public void testPerson(int currentTime, int pid_t, int infIncl, int siteIncl, int[][] cumul_treatment_by_person) {	
+	public void testPerson(int currentTime, int pid_t, int infIncl, int siteIncl, int[][] cumul_treatment_by_person) {
 		super.testPerson(currentTime, pid_t, infIncl, siteIncl, cumul_treatment_by_person);
 		int pid = Math.abs(pid_t);
-	
+
 		if (!vaccination_history.containsKey(pid)) {
 			int grp = getVaccineGrp(pid);
 			for (Integer grpInc : current_vaccination_strategy_by_grp_inc.keySet()) {
 				if ((grpInc.intValue() & 1 << grp) != 0) {
 					double[] current_vaccine_allocation = current_vaccination_strategy_by_grp_inc.get(grpInc);
-	
+
 					// GLOBAL_START,RISK_GRP_INC,
-					// PROB_DOSE_0_AT_TEST,PROB_NEXT_DOSE_0,NEXT_DOSE_AT_0,PROB_NEXT_DOSE_1, NEXT_DOSE_AT_1,,..
-					
+					// PROB_DOSE_0_AT_TEST,PROB_NEXT_DOSE_0,NEXT_DOSE_AT_0,PROB_NEXT_DOSE_1,
+					// NEXT_DOSE_AT_1,,..
+
 					double pDoseAtTest = current_vaccine_allocation[VACCINE_ALLOCATE_PROB_AT_TEST];
 					if (rng_vaccine.nextDouble() < pDoseAtTest) {
 						// First dose
 						ArrayList<Integer> vac_hist = new ArrayList<>();
 						vac_hist.add(currentTime);
 						vaccination_history.put(pid, vac_hist);
-	
+
 						// Check for booster
-	
+
 						boolean boosterEnd = false;
-	
-						for (int booster_prob_index = VACCINE_ALLOCATE_PROB_AT_TEST+1; booster_prob_index < current_vaccine_allocation.length
-								&& !boosterEnd; booster_prob_index += 2) {
-	
+
+						for (int booster_prob_index = VACCINE_ALLOCATE_PROB_AT_TEST
+								+ 1; booster_prob_index < current_vaccine_allocation.length
+										&& !boosterEnd; booster_prob_index += 2) {
+
 							boosterEnd = !(rng_vaccine.nextDouble() < current_vaccine_allocation[booster_prob_index]);
 							if (!boosterEnd) {
 								double mean_booster_schedule = current_vaccine_allocation[booster_prob_index + 1];
 								int booster_time = currentTime + (int) Math.round(mean_booster_schedule);
-	
+
 								ArrayList<Integer> booster_pid = schedule_booster.get(booster_time);
 								if (booster_pid == null) {
 									booster_pid = new ArrayList<>();
 									schedule_booster.put(booster_time, booster_pid);
 								}
 								booster_pid.add(pid);
-	
+
 							}
-	
+
 						}
 					}
 				}

@@ -29,13 +29,7 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 
 	@Override
 	protected void postTimeStep(int currentTime) {
-		super.postTimeStep(currentTime);
-		// Preset for next turn
-		if (currentTime != 0) {
-			int nextTime = currentTime + 1;
-			updateCurrentVaccinationStrategy(nextTime);			
-		}
-
+		super.postTimeStep(currentTime);	
 		// Others steps
 
 		if (currentTime % nUM_TIME_STEPS_PER_SNAP == 0) {
@@ -47,7 +41,7 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 				for (int g = 0; g < cumul_incidence_by_person[inf].length; g++) {
 					cumul_incid += cumul_incidence_by_person[inf][g];
 				}
-				out.printf("%sT = %d, Cumul. incidence #%d = %d\n", filePrefix, currentTime, inf, cumul_incid);
+				out.printf("%sT = %d, Cumul. incidence #%d = %d. Generated at %tc\n", filePrefix, currentTime, inf, cumul_incid, System.currentTimeMillis());
 			}
 
 		}

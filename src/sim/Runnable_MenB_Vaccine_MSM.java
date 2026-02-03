@@ -6,11 +6,8 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.regex.Pattern;
-
-import person.AbstractIndividualInterface;
 
 public class Runnable_MenB_Vaccine_MSM extends Runnable_MenB_Vaccine {
 
@@ -38,38 +35,6 @@ public class Runnable_MenB_Vaccine_MSM extends Runnable_MenB_Vaccine {
 		// MSM only
 		return 2;
 	}	
-
-	@SuppressWarnings("unchecked")
-	@Override
-	protected void postTimeStep(int currentTime) {
-		super.postTimeStep(currentTime);
-		// Preset for next turn
-		if (currentTime != 0) {					
-			updateCurrentVaccinationStrategy(currentTime + 1);				
-		}
-
-		if (currentTime % nUM_TIME_STEPS_PER_SNAP == 0) {
-			HashMap<Integer, int[]> countMap;
-			countMap = (HashMap<Integer, int[]>) sim_output.get(SIM_OUTPUT_KEY_VACC_COVERAGE);
-			if (countMap == null) {
-				countMap = new HashMap<>();
-				sim_output.put(SIM_OUTPUT_KEY_VACC_COVERAGE, countMap);
-			}
-			int[] dose_stat = new int[LENGTH_SIM_OUTPUT_INDEX_VACC_COVERAGE];
-			dose_stat[SIM_OUTPUT_INDEX_VACC_COVERAGE_EVER_VACCINATED] = vaccination_history.size();
-			for (Entry<Integer, ArrayList<Integer>> ent : vaccination_history.entrySet()) {
-				if (ent.getValue().size() > 1) {
-					dose_stat[SIM_OUTPUT_INDEX_VACC_COVERAGE_MULTI_DOSES]++;
-				}
-				if ((currentTime - ent.getValue().get(ent.getValue().size() - 1)) > 5
-						* AbstractIndividualInterface.ONE_YEAR_INT) {
-					dose_stat[SIM_OUTPUT_INDEX_VACC_COVERAGE_LAST_DOSE_5YRPLUS]++;
-				}
-			}
-			countMap.put(currentTime, dose_stat);
-		}
-
-	}
 
 	@Override
 	@SuppressWarnings("unchecked")
