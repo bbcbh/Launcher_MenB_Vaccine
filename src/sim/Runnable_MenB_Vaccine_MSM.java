@@ -1,10 +1,5 @@
 package sim;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Properties;
 import java.util.regex.Pattern;
@@ -40,34 +35,33 @@ public class Runnable_MenB_Vaccine_MSM extends Runnable_MenB_Vaccine {
 	@SuppressWarnings("unchecked")
 	protected void postSimulation() {
 		super.postSimulation();
-
 		String key, fileName;
 		HashMap<Integer, int[]> countMap;
 		String filePrefix = this.getRunnableId() == null ? "" : this.getRunnableId();
 
-		if (sim_output.get(SIM_OUTPUT_KEY_VACC_COVERAGE) != null) {
-			countMap = (HashMap<Integer, int[]>) sim_output.get(SIM_OUTPUT_KEY_VACC_COVERAGE);
-			fileName = String.format(filePrefix + "Vaccine_Coverage_%d_%d.csv", cMAP_SEED, sIM_SEED);
-
-			try {
-				PrintWriter pWri = new PrintWriter(new java.io.File(baseDir, fileName));
-				Integer[] timeArr = countMap.keySet().toArray(new Integer[0]);
-				Arrays.sort(timeArr);
-
-				pWri.println("Time,Ever_Vaccinated,Multi_Doses,Last_Dose_5YPlus");
-				for (Integer time : timeArr) {
-					int[] ent = countMap.get(time);
-					pWri.printf("%d,%d,%d,%d\n", time, ent[SIM_OUTPUT_INDEX_VACC_COVERAGE_EVER_VACCINATED],
-							ent[SIM_OUTPUT_INDEX_VACC_COVERAGE_MULTI_DOSES],
-							ent[SIM_OUTPUT_INDEX_VACC_COVERAGE_LAST_DOSE_5YRPLUS]);
-				}
-
-				pWri.close();
-			} catch (IOException ex) {
-				ex.printStackTrace(System.err);
-			}
-
-		}
+//		if (sim_output.get(SIM_OUTPUT_KEY_VACC_COVERAGE) != null) {
+//			countMap = (HashMap<Integer, int[]>) sim_output.get(SIM_OUTPUT_KEY_VACC_COVERAGE);
+//			fileName = String.format(filePrefix + "Vaccine_Coverage_%d_%d.csv", cMAP_SEED, sIM_SEED);
+//
+//			try {
+//				PrintWriter pWri = new PrintWriter(new java.io.File(baseDir, fileName));
+//				Integer[] timeArr = countMap.keySet().toArray(new Integer[0]);
+//				Arrays.sort(timeArr);
+//
+//				pWri.println("Time,Ever_Vaccinated,Multi_Doses,Last_Dose_5YPlus");
+//				for (Integer time : timeArr) {
+//					int[] ent = countMap.get(time);
+//					pWri.printf("%d,%d,%d,%d\n", time, ent[SIM_OUTPUT_INDEX_VACC_COVERAGE_EVER_VACCINATED],
+//							ent[SIM_OUTPUT_INDEX_VACC_COVERAGE_MULTI_DOSES],
+//							ent[SIM_OUTPUT_INDEX_VACC_COVERAGE_LAST_DOSE_5YRPLUS]);
+//				}
+//
+//				pWri.close();
+//			} catch (IOException ex) {
+//				ex.printStackTrace(System.err);
+//			}
+//
+//		}
 //		if ((simSetting & 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_TREATMENT_FILE) != 0) {
 //			key = String.format(SIM_OUTPUT_KEY_CUMUL_TREATMENT,
 //					Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_TREATMENT_FILE);
@@ -119,35 +113,35 @@ public class Runnable_MenB_Vaccine_MSM extends Runnable_MenB_Vaccine {
 
 		}
 
-		if ((simSetting & 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_TRACK_INFECTION_HISTORY) > 0) {
-
-			PrintWriter pWri;
-			Integer[] pids = infection_history.keySet().toArray(new Integer[infection_history.size()]);
-			Arrays.sort(pids);
-			try {
-				pWri = new PrintWriter(new File(baseDir,
-						String.format(filePrefix + Simulation_ClusterModelTransmission.FILENAME_INFECTION_HISTORY,
-								cMAP_SEED, sIM_SEED)));
-				pWri.println("ID,INF_ID,History");
-				for (Integer pid : pids) {
-					ArrayList<ArrayList<Integer>> hist = infection_history.get(pid);
-					for (int infId = 0; infId < hist.size(); infId++) {
-						pWri.print(pid.toString());
-						pWri.print(',');
-						pWri.print(infId);
-						for (Integer timeEnt : hist.get(infId)) {
-							pWri.print(',');
-							pWri.print(timeEnt);
-						}
-						pWri.println();
-					}
-				}
-
-				pWri.close();
-			} catch (IOException e) {
-				e.printStackTrace(System.err);
-			}
-		}
+//		if ((simSetting & 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_TRACK_INFECTION_HISTORY) > 0) {
+//
+//			PrintWriter pWri;
+//			Integer[] pids = infection_history.keySet().toArray(new Integer[infection_history.size()]);
+//			Arrays.sort(pids);
+//			try {
+//				pWri = new PrintWriter(new File(baseDir,
+//						String.format(filePrefix + Simulation_ClusterModelTransmission.FILENAME_INFECTION_HISTORY,
+//								cMAP_SEED, sIM_SEED)));
+//				pWri.println("ID,INF_ID,History");
+//				for (Integer pid : pids) {
+//					ArrayList<ArrayList<Integer>> hist = infection_history.get(pid);
+//					for (int infId = 0; infId < hist.size(); infId++) {
+//						pWri.print(pid.toString());
+//						pWri.print(',');
+//						pWri.print(infId);
+//						for (Integer timeEnt : hist.get(infId)) {
+//							pWri.print(',');
+//							pWri.print(timeEnt);
+//						}
+//						pWri.println();
+//					}
+//				}
+//
+//				pWri.close();
+//			} catch (IOException e) {
+//				e.printStackTrace(System.err);
+//			}
+//		}
 
 		if (print_progress != null && runnableId != null) {
 			try {
