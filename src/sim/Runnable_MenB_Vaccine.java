@@ -59,6 +59,8 @@ public abstract class Runnable_MenB_Vaccine extends Runnable_MetaPopulation_Mult
 	protected HashMap<Integer, ArrayList<Integer>> vaccination_history = new HashMap<>();
 	// Key = Time , Val = PIDS
 	protected HashMap<Integer, ArrayList<Integer>> schedule_booster = new HashMap<>();
+	
+	protected HashMap<String, Integer> location_map = new HashMap<>();
 
 	// RNG
 	protected RandomGenerator rng_vaccine;
@@ -74,6 +76,11 @@ public abstract class Runnable_MenB_Vaccine extends Runnable_MetaPopulation_Mult
 				prop.getProperty(PROP_VACCINE_ALLOCATIONS, Arrays.toString(new double[0][0])), double[][].class);
 
 		rng_vaccine = new MersenneTwisterRandomGenerator(sim_seed);
+		
+		
+		
+		
+		
 	}
 
 	@Override
@@ -294,6 +301,9 @@ public abstract class Runnable_MenB_Vaccine extends Runnable_MetaPopulation_Mult
 
 		super.printCountMap(countMap, outputFileName, headerFormat, dimension, col_to_print);
 	}
+	
+	
+	
 
 	@Override
 	@SuppressWarnings("unchecked")
