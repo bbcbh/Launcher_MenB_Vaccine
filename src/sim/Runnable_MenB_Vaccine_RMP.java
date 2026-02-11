@@ -102,7 +102,20 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 			printCountMap(countMap, fileName, "Inf_%d_Group_%d", new int[] { NUM_INF, NUM_GRP }, COL_SEL_INF_GENDER);
 
 		}
+		
+		if ((simSetting & 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_TREATMENT_FILE) != 0) {
+			key = String.format(SIM_OUTPUT_KEY_CUMUL_TREATMENT,
+					Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_TREATMENT_FILE);
 
+			countMap = (HashMap<Integer, int[]>) sim_output.get(key);
+			fileName = String.format(filePrefix + Simulation_ClusterModelTransmission.FILENAME_CUMUL_TREATMENT_PERSON,
+					cMAP_SEED, sIM_SEED);
+			printCountMap(countMap, fileName, "Inf_%d_Gender_%d", new int[] { NUM_INF, NUM_GRP },
+					COL_SEL_INF_GENDER);
+
+		}
+		
+		
 		if ((simSetting & 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_PREVAL_FILE) != 0) {
 
 //			key = String.format(SIM_OUTPUT_KEY_INFECTIOUS_GENDER_COUNT,
