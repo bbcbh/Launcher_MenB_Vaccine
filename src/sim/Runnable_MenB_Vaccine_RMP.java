@@ -97,8 +97,7 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 				}
 			}
 			countGrpLoc.put(currentTime, countEnt);
-			
-			
+
 			// Cumulative treatment
 			countGrpLoc = ((HashMap<Integer, int[][]>) sim_output.get(SIM_OUTPUT_KEY_CUMUL_TREATMENT_BY_LOC_GRP));
 
@@ -108,8 +107,10 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 			}
 
 			int[][] export_cumul_treatment = new int[NUM_GRP][location_name.length];
-			for (int g = 0; g < export_cumul_treatment.length; g++) {
-				export_cumul_treatment[g] = Arrays.copyOf(cumul_treatment_by_loc_grp[g], location_name.length);
+			if (cumul_treatment_by_loc_grp != null) {
+				for (int g = 0; g < export_cumul_treatment.length; g++) {
+					export_cumul_treatment[g] = Arrays.copyOf(cumul_treatment_by_loc_grp[g], location_name.length);
+				}
 			}
 			countGrpLoc.put(currentTime, export_cumul_treatment);
 
@@ -126,7 +127,7 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 		HashMap<Integer, int[]> countMap;
 		String filePrefix = this.getRunnableId() == null ? "" : this.getRunnableId();
 		final int[] COL_SEL_INF_GENDER = null;
-		
+
 		File seedFileDir = this.getSim_prop().containsKey(PROP_SEED_FILE_PATH)
 				? new File((String) this.getSim_prop().get(PROP_SEED_FILE_PATH)).getParentFile()
 				: baseDir;
@@ -150,14 +151,12 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 			fileName = String.format(filePrefix + Simulation_ClusterModelTransmission.FILENAME_CUMUL_TREATMENT_PERSON,
 					cMAP_SEED, sIM_SEED);
 			printCountMap(countMap, fileName, "Inf_%d_Gender_%d", new int[] { NUM_INF, NUM_GRP }, COL_SEL_INF_GENDER);
-			
-			
+
 			HashMap<Integer, int[][]> countGrpLoc = (HashMap<Integer, int[][]>) sim_output
 					.get(SIM_OUTPUT_KEY_CUMUL_TREATMENT_BY_LOC_GRP);
-			fileName = String.format(filePrefix + "Treatment_by_GrpLoc_%d_%d.csv", cMAP_SEED, sIM_SEED);			
+			fileName = String.format(filePrefix + "Treatment_by_GrpLoc_%d_%d.csv", cMAP_SEED, sIM_SEED);
 			File file_grp_loc = new File(seedFileDir, fileName);
 			printLocGrpCount(countGrpLoc, file_grp_loc);
-			
 
 		}
 
@@ -174,7 +173,7 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 			HashMap<Integer, int[][]> countGrpLoc = (HashMap<Integer, int[][]>) sim_output
 					.get(SIM_OUTPUT_KEY_PREVALENCE_BY_LOC_GRP);
 			fileName = String.format(filePrefix + "Infectious_by_GrpLoc_%d_%d.csv", cMAP_SEED, sIM_SEED);
-		
+
 			File file_grp_loc = new File(seedFileDir, fileName);
 			printLocGrpCount(countGrpLoc, file_grp_loc);
 
