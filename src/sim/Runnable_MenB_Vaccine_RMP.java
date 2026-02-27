@@ -74,6 +74,8 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 
 					region_map.put(grp, prob_region);
 				}
+				
+				System.out.printf("Regions information loaded from %s.\n", file_region_info.getAbsolutePath());
 			} catch (IOException ex) {
 				ex.printStackTrace(System.err);
 
