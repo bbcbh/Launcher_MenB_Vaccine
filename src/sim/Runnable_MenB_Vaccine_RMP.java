@@ -12,6 +12,8 @@ import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.regex.Pattern;
 
+import random.RandomGenerator;
+
 public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 
 	public static final Pattern PROP_TYPE_PATTERN = Pattern.compile("ClusterModel_MenB_Vaccine_RMP");
@@ -25,12 +27,92 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 
 	protected int[][] cumul_treatment_by_loc_grp;
 
+	public static final String FILE_REGION_SPREAD = "Pop_IREG_RA.csv";
+
+	// K = Region_Id, V = {grp, region_spread}
+	protected HashMap<Integer, HashMap<Integer, double[]>> map_regions_spread_by_locGrp = null;
+
+	public static final int FIELD_SOUGHT_TEST_RATE_RMP_CITY_ADJ = FIELD_SOUGHT_TEST_RATE + 1;
+	public static final int FIELD_SOUGHT_TEST_RATE_RMP_REGIONAL_ADJ = FIELD_SOUGHT_TEST_RATE_RMP_CITY_ADJ + 1;
+	public static final int FIELD_SOUGHT_TEST_RATE_RMP_REMOTE_ADJ = FIELD_SOUGHT_TEST_RATE_RMP_REGIONAL_ADJ + 1;
+
+	// RNG
+	protected RandomGenerator rng_region;
+
 	public Runnable_MenB_Vaccine_RMP(long cMap_seed, long sim_seed, Properties prop) {
 		super(cMap_seed, sim_seed, prop, NUM_INF, NUM_SITE, NUM_ACT);
+		rng_region = rng_vaccine;
+
+		File file_region_info = new File(prop.getProperty("PROP_CONTACT_MAP_LOC"));
+		file_region_info = new File(file_region_info, FILE_REGION_SPREAD);
+
+		if (file_region_info.isFile()) {
+			map_regions_spread_by_locGrp = new HashMap<>();
+			try {
+				String[] ent = util.Util_7Z_CSV_Entry_Extract_Callable.extracted_lines_from_text(file_region_info);
+				for (int lineNum = 1; lineNum < ent.length; lineNum++) {
+					String[] line_ent = ent[lineNum].split(",");
+
+					Integer ireg = Integer.valueOf(line_ent[0]);
+					Integer grp = Integer.valueOf(line_ent[1]);
+					double[] prob_region = new double[line_ent.length - 2];
+
+					double pre_sum = 0;
+					for (int i = 0; i < prob_region.length; i++) {
+						prob_region[i] = Double.parseDouble(line_ent[i + 2]) + pre_sum;
+						pre_sum = prob_region[i];
+					}
+					for (int i = 0; i < prob_region.length; i++) {
+						prob_region[i] = prob_region[i] / prob_region[prob_region.length - 1];
+					}
+
+					HashMap<Integer, double[]> region_map = map_regions_spread_by_locGrp.get(ireg);
+					if (region_map == null) {
+						region_map = new HashMap<>();
+						map_regions_spread_by_locGrp.put(ireg, region_map);
+					}
+
+					region_map.put(grp, prob_region);
+				}
+			} catch (IOException ex) {
+				ex.printStackTrace(System.err);
+
+			}
+
+		}
+
 	}
 
 	protected int getVaccineGrp(int pid) {
 		return getPersonGrp(pid);
+	}
+
+	@Override
+	protected double getSeekTestRate(Integer pid) {
+		double seek_test_rate = super.getSeekTestRate(pid);
+		if (map_regions_spread_by_locGrp != null) {
+			int[] indiv_ent = indiv_map.get(pid);
+			int g = indiv_ent[INDIV_MAP_CURRENT_GRP];
+			double[][] sym_seek_rate_field = (double[][]) getRunnable_fields()[RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM];
+			for (double[] ent : sym_seek_rate_field) {
+				if (ent.length >= FIELD_SOUGHT_TEST_RATE_RMP_REMOTE_ADJ) {
+					int gender_inc = (int) ent[FIELD_SOUGHT_TEST_PERIOD_BY_SYM_GENDER_INC];
+					if ((gender_inc & 1 << g) != 0) {
+						int home_loc = indiv_ent[INDIV_MAP_HOME_LOC];
+						double[] region_spread = map_regions_spread_by_locGrp.get(home_loc).get(g);
+						double pRegion =  rng_region.nextDouble();
+						int regPt = Arrays.binarySearch(region_spread,pRegion);
+						if (regPt < 0) {
+							regPt = ~regPt;
+						}
+						seek_test_rate *= ent[FIELD_SOUGHT_TEST_RATE_RMP_CITY_ADJ + regPt];
+						break;
+					}
+				}
+			}
+		}
+
+		return seek_test_rate;
 	}
 
 	@Override
