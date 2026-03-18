@@ -227,16 +227,17 @@ public abstract class Runnable_MenB_Vaccine extends Runnable_MetaPopulation_Mult
 				current_vaccination_strategy_by_grp_inc.put(grpInc, vaccine_allocate_all[r]);
 
 				if (grpInc < 0) {
+
 					// First vaccination at intro time
 					double[] current_vaccine_allocation = current_vaccination_strategy_by_grp_inc.get(grpInc);
 					double pDoseAtGrp = current_vaccine_allocation[VACCINE_ALLOCATE_PROB];
 
 					int grpInc_age = ~grpInc;
 					int grp_sel = 0;
-					
+
 					int vaccination_count = 0;
 					int candidate_count = 0;
-					
+
 					while ((1 << grp_sel) <= grpInc_age) {
 						if (((1 << grp_sel) & grpInc_age) != 0) {
 							ArrayList<Integer> pids = current_pids_by_grp.get(grp_sel);
@@ -246,16 +247,15 @@ public abstract class Runnable_MenB_Vaccine extends Runnable_MetaPopulation_Mult
 									vaccination_count++;
 								}
 							}
-							
+
 							candidate_count += pids.size();
 						}
 						grp_sel++;
 					}
 					String filePrefix = this.getRunnableId() == null ? "" : String.format("%s ", this.getRunnableId());
-					System.out.printf("%sT = %d: Mass vaccination of GrpInc=%d. # vaccinated = %d out of %d.\n", 
-							filePrefix, updateTime, grpInc_age, vaccination_count, candidate_count );
-					
-					
+					System.out.printf("%sT = %d: Mass vaccination of GrpInc=%d. # vaccinated = %d out of %d.\n",
+							filePrefix, updateTime, grpInc_age, vaccination_count, candidate_count);
+
 				}
 
 			}
@@ -287,9 +287,20 @@ public abstract class Runnable_MenB_Vaccine extends Runnable_MetaPopulation_Mult
 					for (int grp_incl : vaccine_grp_incl) {
 						if (((1 << grp_change_to) & ~grp_incl) != 0) {
 							double[] current_vaccine_allocation = current_vaccination_strategy_by_grp_inc.get(grp_incl);
+
 							double pDoseAtGrp = current_vaccine_allocation[VACCINE_ALLOCATE_PROB];
 							if (rng_vaccine.nextDouble() < pDoseAtGrp) {
-								vaccinate_person(pid, current_vaccine_allocation, time);
+								int pre_vaccine_time_offset = 0;
+								// Backward vaccination start time if needed
+								double pre_grp_vaccine_ratio = current_vaccine_allocation[VACCINE_ALLOCATE_GRP_INC]
+										- (int) current_vaccine_allocation[VACCINE_ALLOCATE_GRP_INC];
+								if (pre_grp_vaccine_ratio != 0) {
+									int min_grp_age = grp_age_range[grp_change_to][0];
+									int pre_vaccine_time = -(int) (pre_grp_vaccine_ratio * min_grp_age);
+									pre_vaccine_time_offset = rng_vaccine.nextInt(pre_vaccine_time);
+								}
+
+								vaccinate_person(pid, current_vaccine_allocation, time - pre_vaccine_time_offset);
 							}
 
 						}
