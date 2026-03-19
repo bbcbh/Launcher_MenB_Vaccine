@@ -83,7 +83,7 @@ public class Simulation_MenB_Vaccine extends Simulation_MetaPopulation {
 	}
 
 	@Override
-	protected void finalise_simulations() throws IOException, FileNotFoundException {		
+	protected void finalise_simulations() throws IOException, FileNotFoundException {
 		if (preGenSeedFile != null && !baseDir.equals(preGenSeedFile.getParentFile())) {
 			// Zip extra files
 			Pattern pattern_csv_extra = Pattern.compile("(?:\\[.*\\]){0,1}(.*)_(-{0,1}\\d+)_-{0,1}\\d+.csv");
