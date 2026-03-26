@@ -24,6 +24,7 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 	private static final int NUM_ACT = 1; // Penile-vaginal sex only
 
 	protected static final String SIM_OUTPUT_KEY_PREVALENCE_BY_LOC_GRP = "SIM_OUTPUT_KEY_PREVALENCE_BY_LOC_GRP";
+	protected static final String SIM_OUTPUT_KEY_PREVALENCE_BY_REG_GRP = "SIM_OUTPUT_KEY_PREVALENCE_BY_REG_GRP";
 	protected static final String SIM_OUTPUT_KEY_CUMUL_TREATMENT_BY_LOC_GRP = "SIM_OUTPUT_KEY_TREATMENT_BY_LOC_GRP";
 	protected static final String SIM_OUTOUT_KEY_CUMUL_TREATMENT_MISSED = "SIM_OUTOUT_KEY_CUMUL_TREATMENT_MISSED";
 	protected static final String SIM_OUTOUT_KEY_CUMUL_TREATMENT_MISSED_BY_LOC_GRP = "SIM_OUTOUT_KEY_CUMUL_TREATMENT_MISSED_BY_LOC_GRP";
@@ -35,6 +36,12 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 	// K = Grp, V = double[] {treatment_miss_city, treatment_miss_regional,
 	// treatment_miss_remote}
 	protected HashMap<Integer, double[]> treatment_miss_by_grp = new HashMap<>();
+	
+	
+	protected String[] region_name = new String[]{"CITY","REGIONAL","REMOTE"};	
+
+	// K = pid, V = region_index (0 = CITY, 1 = REGIONAL, 2 = REMOTE)
+	private HashMap<Integer, Integer> map_pid_region = new HashMap<>();
 
 	public static final String FILE_REGION_SPREAD = "Pop_IREG_RA.csv";
 
@@ -109,13 +116,14 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 				if (ent.length >= FIELD_SOUGHT_TEST_RATE_RMP_REMOTE_ADJ) {
 					int gender_inc = (int) ent[FIELD_SOUGHT_TEST_PERIOD_BY_SYM_GENDER_INC];
 					if ((gender_inc & 1 << g) != 0) {
-						int home_loc = indiv_ent[INDIV_MAP_HOME_LOC];
-						double[] region_spread = map_regions_spread_by_locGrp.get(home_loc).get(g);
-						double pRegion = rng_region.nextDouble();
-						int regPt = Arrays.binarySearch(region_spread, pRegion);
-						if (regPt < 0) {
-							regPt = ~regPt;
-						}
+						int regPt = getPersonRegion(pid, indiv_ent).intValue();
+//						int home_loc = indiv_ent[INDIV_MAP_HOME_LOC];
+//						double[] region_spread = map_regions_spread_by_locGrp.get(home_loc).get(g);
+//						double pRegion = rng_region.nextDouble();
+//						regPt = Arrays.binarySearch(region_spread, pRegion);
+//						if (regPt < 0) {
+//							regPt = ~regPt;
+//						}
 						seek_test_rate *= ent[FIELD_SOUGHT_TEST_RATE_RMP_CITY_ADJ + regPt];
 						break;
 					}
@@ -130,32 +138,25 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 	public ArrayList<Integer> loadOptParameter(String[] parameter_settings, double[] point, int[][] seedInfectNum,
 			boolean display_only) {
 
-		Pattern test_rate_pattern = Pattern.compile("21_(\\d+)_(\\d+)");
+		Pattern test_rate_pattern = Pattern.compile("21_(\\d+)_(\\d+)"); // POP_PROP_INIT_PREFIX_21
 		for (int i = 0; i < parameter_settings.length; i++) {
 			Matcher m = test_rate_pattern.matcher(parameter_settings[i]);
 			if (m.matches()) {
 				int row_inc = Integer.parseInt(m.group(1));
 				int ent_inc = Integer.parseInt(m.group(2));
-
 				double[][] testRateDefs = (double[][]) getRunnable_fields()[RUNNABLE_FIELD_TRANSMISSION_TESTING_RATE_BY_RISK_CATEGORIES];
 
-				for (int tR = 0; tR < testRateDefs.length; tR++) {					
-					if ((row_inc & (1 << tR)) != 0) {						
+				for (int tR = 0; tR < testRateDefs.length; tR++) {
+					if ((row_inc & (1 << tR)) != 0) {
 						if (ent_inc >= 1 << testRateDefs[tR].length) {
-							int start = 1 << (testRateDefs[tR].length + 1); // -1 offset
-							int repPt = 0;
-							while (start <= ent_inc) {
-								if ((start & ent_inc) != 0) {
-									int gIncl = (int) testRateDefs[tR][FIELD_TESTING_RATE_BY_RISK_CATEGORIES_GENDER_INCLUDE_INDEX];
-									double[] ent = treatment_miss_by_grp.get(gIncl);
-									if (ent != null) {
-										ent[repPt] = point[i];
-									}
+							int gIncl = (int) testRateDefs[tR][FIELD_TESTING_RATE_BY_RISK_CATEGORIES_GENDER_INCLUDE_INDEX];
+							int repPt_incl = (int) testRateDefs[tR][FIELD_TESTING_RATE_BY_RISK_CATEGORIES_RISK_GRP_INCLUDE_INDEX];
+							double[] ent = treatment_miss_by_grp.get(gIncl);
+							for (int r = 0; r < ent.length; r++) {
+								if ((repPt_incl & (1 << r)) != 0) {
+									ent[r] = point[i];
 								}
-								repPt++;
-								start = start << 1;
 							}
-
 						}
 					}
 
@@ -165,6 +166,55 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 		}
 
 		return super.loadOptParameter(parameter_settings, point, seedInfectNum, display_only);
+	}
+
+	@Override
+	public void scheduleNextTest(Integer personId, int lastTestTime, int mustTestBefore, int last_test_infIncl,
+			int last_test_siteIncl) {
+
+		// Overwrite to include region rather than risk
+		int[] indiv_stat = indiv_map.get(personId);
+
+		Integer regionCat = getPersonRegion(personId, indiv_stat);
+
+		// Testing rate definitions
+		double[][] testRateDefs = (double[][]) getRunnable_fields()[RUNNABLE_FIELD_TRANSMISSION_TESTING_RATE_BY_RISK_CATEGORIES];
+
+		for (int i = 0; i < testRateDefs.length; i++) {
+			double[] testRateDef = testRateDefs[i];
+			int gIncl = (int) testRateDef[FIELD_TESTING_RATE_BY_RISK_CATEGORIES_GENDER_INCLUDE_INDEX];
+			int iIncl = (int) testRateDef[FIELD_TESTING_RATE_BY_RISK_CATEGORIES_INF_INCLUDE_INDEX];
+			int rIncl = (int) testRateDef[FIELD_TESTING_RATE_BY_RISK_CATEGORIES_RISK_GRP_INCLUDE_INDEX];
+			int sIncl = (int) testRateDef[FIELD_TESTING_RATE_BY_RISK_CATEGORIES_SITE_INCLUDE_INDEX];
+
+			if (((gIncl & (1 << indiv_stat[INDIV_MAP_CURRENT_GRP])) != 0) && ((rIncl & (1 << regionCat)) != 0)
+					&& (last_test_infIncl < 0 || last_test_infIncl == iIncl)
+					&& (last_test_siteIncl < 0 || last_test_siteIncl == sIncl)
+					&& testRateDef[FIELD_TESTING_RATE_BY_RISK_CATEGORIES_TEST_RATE_PARAM_START] != -1) {
+				scheduleNextTestByDefNum(personId, i, lastTestTime, mustTestBefore);
+			}
+
+		}
+
+		// super.scheduleNextTest(personId, lastTestTime, mustTestBefore,
+		// last_test_infIncl, last_test_siteIncl);
+	}
+
+	protected Integer getPersonRegion(Integer personId, int[] indiv_stat) {
+		Integer regionCat = map_pid_region.get(personId);
+
+		if (regionCat == null) {
+			// 0 = City, 1 = Regional, 2 = Remote;
+			double[] region_spread = map_regions_spread_by_locGrp.get(indiv_stat[INDIV_MAP_HOME_LOC])
+					.get(indiv_stat[INDIV_MAP_CURRENT_GRP]);
+			double pRegion = rng_region.nextDouble();
+			regionCat = Arrays.binarySearch(region_spread, pRegion);
+			if (regionCat < 0) {
+				regionCat = ~regionCat;
+			}
+			map_pid_region.put(personId, regionCat);
+		}
+		return regionCat;
 	}
 
 	@Override
@@ -179,9 +229,21 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 							+ 1; i < testRateDefs[tR].length; i++) {
 						if (testRateDefs[tR][i] == -1) {
 							int gIncl = (int) testRateDefs[tR][FIELD_TESTING_RATE_BY_RISK_CATEGORIES_GENDER_INCLUDE_INDEX];
-							treatment_miss_by_grp.put(gIncl,
-									Arrays.copyOfRange(testRateDefs[tR], i + 1, testRateDefs[tR].length));
+							int rIncl = (int) testRateDefs[tR][FIELD_TESTING_RATE_BY_RISK_CATEGORIES_RISK_GRP_INCLUDE_INDEX]; // RISK
+																																// =
+																																// region
+							double[] ent = treatment_miss_by_grp.get(gIncl);
+							if (ent == null) {
+								ent = new double[region_name.length]; // 0 = CITY, 1 = REGIONAL, 2 = REMOTE
+								treatment_miss_by_grp.put(gIncl, ent);
+							}
+							for (int r = 0; r < ent.length; r++) {
+								if ((rIncl & (1 << r)) != 0) {
+									ent[r] = testRateDefs[tR][i + 1];
+								}
+							}
 							testRateDefs[tR] = Arrays.copyOf(testRateDefs[tR], i);
+
 							break;
 						}
 					}
@@ -209,22 +271,23 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 		int pid = Math.abs(pid_t);
 		int[] indiv_stat = indiv_map.get(pid);
 		int grp = indiv_stat[INDIV_MAP_CURRENT_GRP];
-		boolean treatment_missed = pid_t >= 0 // based on symptom if pid_t < 0
-				&& map_regions_spread_by_locGrp != null; // No treatment miss option
+		boolean treatment_missed = pid_t >= 0; // based on symptom if pid_t < 0
 
 		if (treatment_missed) {
+			int regPt = getPersonRegion(pid, indiv_stat);
 			treatment_missed = false;
+
 			for (Entry<Integer, double[]> grp_inc_ent : treatment_miss_by_grp.entrySet()) {
 				if ((grp_inc_ent.getKey().intValue() & (1 << grp)) != 0) {
-					double[] treatment_miss_by_region = grp_inc_ent.getValue();
-					int homeLoc = indiv_stat[INDIV_MAP_HOME_LOC];
-					double[] region_spread = map_regions_spread_by_locGrp.get(homeLoc).get(grp);
-					double pRegion = rng_region.nextDouble();
-					int regPt = Arrays.binarySearch(region_spread, pRegion);
-					if (regPt < 0) {
-						regPt = ~regPt;
-					}
-					treatment_missed = rng_region.nextDouble() < treatment_miss_by_region[regPt];
+					double[] treatment_miss_by_grp_region = grp_inc_ent.getValue();
+//					int homeLoc = indiv_stat[INDIV_MAP_HOME_LOC];
+//					double[] region_spread = map_regions_spread_by_locGrp.get(homeLoc).get(grp);													
+//					double pRegion = rng_region.nextDouble();
+//					int regPt = Arrays.binarySearch(region_spread, pRegion);
+//					if (regPt < 0) {
+//						regPt = ~regPt;
+//					}
+					treatment_missed = rng_region.nextDouble() < treatment_miss_by_grp_region[regPt];
 					break;
 				}
 			}
@@ -269,15 +332,23 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 			}
 
 			// Add grp-location stat
-			HashMap<Integer, int[][]> countGrpLoc;
-			// Prevalence
+			HashMap<Integer, int[][]> countGrpLoc, countGrpRegion;
+			// Prevalence by location
 			countGrpLoc = ((HashMap<Integer, int[][]>) sim_output.get(SIM_OUTPUT_KEY_PREVALENCE_BY_LOC_GRP));
 			if (countGrpLoc == null) {
 				countGrpLoc = new HashMap<>();
 				sim_output.put(SIM_OUTPUT_KEY_PREVALENCE_BY_LOC_GRP, countGrpLoc);
 			}
 
-			int[][] countEnt = new int[NUM_GRP][location_name.length];
+			// Prevalence by region
+			countGrpRegion = ((HashMap<Integer, int[][]>) sim_output.get(SIM_OUTPUT_KEY_PREVALENCE_BY_REG_GRP));
+			if (countGrpRegion == null) {
+				countGrpRegion = new HashMap<>();
+				sim_output.put(SIM_OUTPUT_KEY_PREVALENCE_BY_REG_GRP, countGrpRegion);
+			}
+
+			int[][] countEntGrpLoc = new int[NUM_GRP][location_name.length];
+			int[][] countEntGrpRegion = new int[NUM_GRP][region_name.length]; // CITY, REGIONAL, REMOTE
 			ArrayList<Integer> infected_id_arr = new ArrayList<>();
 
 			for (Entry<String, ArrayList<Integer>> ent : map_currently_infectious.entrySet()) {
@@ -289,13 +360,16 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 						if (grp >= 0) {
 							int location = indiv_map.get(pid)[INDIV_MAP_CURRENT_LOC];
 							int locPt = map_location.get(Integer.toString(location));
-							countEnt[grp][locPt]++;
-						}
+							int regionPt = getPersonRegion(pid, indiv_stat);
+							countEntGrpLoc[grp][locPt]++;
+							countEntGrpRegion[grp][regionPt]++;							
+						}																
 						infected_id_arr.add(~index, pid);
 					}
 				}
 			}
-			countGrpLoc.put(currentTime, countEnt);
+			countGrpLoc.put(currentTime, countEntGrpLoc);
+			countGrpRegion.put(currentTime, countEntGrpRegion);
 
 			// Cumulative treatment
 			countGrpLoc = (HashMap<Integer, int[][]>) sim_output.get(SIM_OUTPUT_KEY_CUMUL_TREATMENT_BY_LOC_GRP);
@@ -396,12 +470,12 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 			countGrpLoc = (HashMap<Integer, int[][]>) sim_output.get(SIM_OUTPUT_KEY_CUMUL_TREATMENT_BY_LOC_GRP);
 			fileName = String.format(filePrefix + "Treatment_by_GrpLoc_%d_%d.csv", cMAP_SEED, sIM_SEED);
 			file_grp_loc = new File(seedFileDir, fileName);
-			printLocGrpCount(countGrpLoc, file_grp_loc);
+			printGrpCount(countGrpLoc, file_grp_loc,location_name, "Grp_%d_Loc_%s");
 
 			countGrpLoc = (HashMap<Integer, int[][]>) sim_output.get(SIM_OUTOUT_KEY_CUMUL_TREATMENT_MISSED_BY_LOC_GRP);
 			fileName = String.format(filePrefix + "Treatment_Missed_by_GrpLoc_%d_%d.csv", cMAP_SEED, sIM_SEED);
 			file_grp_loc = new File(seedFileDir, fileName);
-			printLocGrpCount(countGrpLoc, file_grp_loc);
+			printGrpCount(countGrpLoc, file_grp_loc,location_name, "Grp_%d_Loc_%s");
 
 		}
 
@@ -417,24 +491,34 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 
 			HashMap<Integer, int[][]> countGrpLoc = (HashMap<Integer, int[][]>) sim_output
 					.get(SIM_OUTPUT_KEY_PREVALENCE_BY_LOC_GRP);
-			fileName = String.format(filePrefix + "Infectious_by_GrpLoc_%d_%d.csv", cMAP_SEED, sIM_SEED);
+			fileName = String.format(filePrefix + "Infectious_by_GrpLoc_%d_%d.csv", cMAP_SEED, sIM_SEED);			
 
 			File file_grp_loc = new File(seedFileDir, fileName);
-			printLocGrpCount(countGrpLoc, file_grp_loc);
+			printGrpCount(countGrpLoc, file_grp_loc,location_name, "Grp_%d_Loc_%s");
+			
+			HashMap<Integer, int[][]> countGrpReg = (HashMap<Integer, int[][]>) sim_output
+					.get(SIM_OUTPUT_KEY_PREVALENCE_BY_REG_GRP);
+			fileName = String.format(filePrefix + "Infectious_by_GrpRegion_%d_%d.csv", cMAP_SEED, sIM_SEED);			
+
+			File file_grp_reg = new File(seedFileDir, fileName);
+			printGrpCount(countGrpReg, file_grp_reg, region_name, "Grp_%d_%s");
+			
+			
 
 		}
 
 	}
 
-	private void printLocGrpCount(HashMap<Integer, int[][]> countGrpLoc, File file_grp_loc) {
+	private void printGrpCount(HashMap<Integer, int[][]> countGrpLoc, File file_grp_loc,
+			String[] subGrpName, String colHeaderFormat) {
 		try {
 			PrintWriter pri_grp_loc = new PrintWriter(file_grp_loc);
 			StringBuilder header = new StringBuilder();
 			header.append("Time");
 			for (int g = 0; g < NUM_GRP; g++) {
-				for (int loc = 0; loc < location_name.length; loc++) {
+				for (int sG = 0; sG < subGrpName.length; sG++) {
 					header.append(',');
-					header.append(String.format("Grp_%d_Loc_%s", g, location_name[loc]));
+					header.append(String.format(colHeaderFormat, g, subGrpName[sG]));
 				}
 			}
 			pri_grp_loc.println(header.toString());
@@ -446,9 +530,9 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 				pri_grp_loc.print(t);
 				int[][] ent = countGrpLoc.get(t);
 				for (int g = 0; g < NUM_GRP; g++) {
-					for (int loc = 0; loc < location_name.length; loc++) {
+					for (int sG = 0; sG < subGrpName.length; sG++) {
 						pri_grp_loc.print(',');
-						pri_grp_loc.print(ent[g][loc]);
+						pri_grp_loc.print(ent[g][sG]);
 					}
 				}
 				pri_grp_loc.println();
