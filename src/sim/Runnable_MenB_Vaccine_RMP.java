@@ -29,6 +29,12 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 	protected static final String SIM_OUTOUT_KEY_CUMUL_TREATMENT_MISSED = "SIM_OUTOUT_KEY_CUMUL_TREATMENT_MISSED";
 	protected static final String SIM_OUTOUT_KEY_CUMUL_TREATMENT_MISSED_BY_LOC_GRP = "SIM_OUTOUT_KEY_CUMUL_TREATMENT_MISSED_BY_LOC_GRP";
 
+	// Adjust based on regions
+	protected static final int FIELD_ACT_FREQ_TRAN_ADJ_CITY = FIELD_ACT_FREQ_USAGE_CASUAL + 1;
+	protected static final int FIELD_ACT_FREQ_TRAN_ADJ_REGIONAL = FIELD_ACT_FREQ_TRAN_ADJ_CITY + 1;
+	protected static final int FIELD_ACT_FREQ_TRAN_ADJ_REMOTE= FIELD_ACT_FREQ_TRAN_ADJ_REGIONAL + 1;
+	
+	
 	protected int[][] cumul_treatment_by_loc_grp;
 	protected int[][] cumul_treatment_missed_by_loc_grp;
 	protected int[][] cumul_treatment_missed_by_person;
@@ -543,5 +549,27 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 			e.printStackTrace(System.err);
 		}
 	}
+
+	@Override
+	protected double getTransmissionProb(int currentTime, int inf_id, int pid_inf_src, int pid_inf_tar,
+			int partnershiptDur, int actType, int src_site, int tar_site) {
+		
+		double[] actFieldEntry = table_act_frequency[actType][getPersonGrp(pid_inf_src)][getPersonGrp(pid_inf_tar)];
+		
+		double prob_tran = super.getTransmissionProb(currentTime, inf_id, pid_inf_src, pid_inf_tar, partnershiptDur, actType, src_site,
+				tar_site);
+		
+		if(actFieldEntry.length > FIELD_ACT_FREQ_TRAN_ADJ_CITY) {
+			prob_tran *= actFieldEntry[FIELD_ACT_FREQ_TRAN_ADJ_CITY
+			                           + getPersonRegion(pid_inf_src, indiv_map.get(pid_inf_src))];						
+		}
+		
+		
+		
+		
+		return prob_tran;
+	}
+	
+	
 
 }
