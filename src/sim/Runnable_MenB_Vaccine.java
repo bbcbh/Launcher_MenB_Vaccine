@@ -252,9 +252,13 @@ public abstract class Runnable_MenB_Vaccine extends Runnable_MetaPopulation_Mult
 						}
 						grp_sel++;
 					}
-					String filePrefix = this.getRunnableId() == null ? "" : String.format("%s ", this.getRunnableId());
-					System.out.printf("%sT = %d: Mass vaccination of GrpInc=%d. # vaccinated = %d out of %d.\n",
-							filePrefix, updateTime, grpInc_age, vaccination_count, candidate_count);
+
+					if (this.print_progress != null) {
+						String filePrefix = this.getRunnableId() == null ? ""
+								: String.format("%s ", this.getRunnableId());
+						System.out.printf("%sT = %d: Mass vaccination of GrpInc=%d. # vaccinated = %d out of %d.\n",
+								filePrefix, updateTime, grpInc_age, vaccination_count, candidate_count);
+					}
 
 				}
 

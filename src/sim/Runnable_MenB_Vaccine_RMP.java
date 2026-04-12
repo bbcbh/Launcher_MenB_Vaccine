@@ -32,9 +32,8 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 	// Adjust based on regions
 	protected static final int FIELD_ACT_FREQ_TRAN_ADJ_CITY = FIELD_ACT_FREQ_USAGE_CASUAL + 1;
 	protected static final int FIELD_ACT_FREQ_TRAN_ADJ_REGIONAL = FIELD_ACT_FREQ_TRAN_ADJ_CITY + 1;
-	protected static final int FIELD_ACT_FREQ_TRAN_ADJ_REMOTE= FIELD_ACT_FREQ_TRAN_ADJ_REGIONAL + 1;
-	
-	
+	protected static final int FIELD_ACT_FREQ_TRAN_ADJ_REMOTE = FIELD_ACT_FREQ_TRAN_ADJ_REGIONAL + 1;
+
 	protected int[][] cumul_treatment_by_loc_grp;
 	protected int[][] cumul_treatment_missed_by_loc_grp;
 	protected int[][] cumul_treatment_missed_by_person;
@@ -42,9 +41,8 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 	// K = Grp, V = double[] {treatment_miss_city, treatment_miss_regional,
 	// treatment_miss_remote}
 	protected HashMap<Integer, double[]> treatment_miss_by_grp = new HashMap<>();
-	
-	
-	protected String[] region_name = new String[]{"CITY","REGIONAL","REMOTE"};	
+
+	protected String[] region_name = new String[] { "CITY", "REGIONAL", "REMOTE" };
 
 	// K = pid, V = region_index (0 = CITY, 1 = REGIONAL, 2 = REMOTE)
 	private HashMap<Integer, Integer> map_pid_region = new HashMap<>();
@@ -97,7 +95,9 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 					region_map.put(grp, prob_region);
 				}
 
-				System.out.printf("Regions information loaded from %s.\n", file_region_info.getAbsolutePath());
+				if (print_progress != null) {
+					System.out.printf("Regions information loaded from %s.\n", file_region_info.getAbsolutePath());
+				}
 			} catch (IOException ex) {
 				ex.printStackTrace(System.err);
 
@@ -326,15 +326,18 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 
 		if (currentTime % nUM_TIME_STEPS_PER_SNAP == 0) {
 			String filePrefix = this.getRunnableId() == null ? "" : String.format("%s ", this.getRunnableId());
-			PrintStream out = print_progress == null ? System.out : print_progress;
 
-			for (int inf = 0; inf < cumul_incidence_by_person.length; inf++) {
-				int cumul_incid = 0;
-				for (int g = 0; g < cumul_incidence_by_person[inf].length; g++) {
-					cumul_incid += cumul_incidence_by_person[inf][g];
+			if (this.print_progress != null) {
+				PrintStream out = print_progress == null ? System.out : print_progress;
+
+				for (int inf = 0; inf < cumul_incidence_by_person.length; inf++) {
+					int cumul_incid = 0;
+					for (int g = 0; g < cumul_incidence_by_person[inf].length; g++) {
+						cumul_incid += cumul_incidence_by_person[inf][g];
+					}
+					out.printf("%sT = %d, Cumul. incidence #%d = %d. Generated at %tc\n", filePrefix, currentTime, inf,
+							cumul_incid, System.currentTimeMillis());
 				}
-				out.printf("%sT = %d, Cumul. incidence #%d = %d. Generated at %tc\n", filePrefix, currentTime, inf,
-						cumul_incid, System.currentTimeMillis());
 			}
 
 			// Add grp-location stat
@@ -368,8 +371,8 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 							int locPt = map_location.get(Integer.toString(location));
 							int regionPt = getPersonRegion(pid, indiv_stat);
 							countEntGrpLoc[grp][locPt]++;
-							countEntGrpRegion[grp][regionPt]++;							
-						}																
+							countEntGrpRegion[grp][regionPt]++;
+						}
 						infected_id_arr.add(~index, pid);
 					}
 				}
@@ -476,12 +479,12 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 			countGrpLoc = (HashMap<Integer, int[][]>) sim_output.get(SIM_OUTPUT_KEY_CUMUL_TREATMENT_BY_LOC_GRP);
 			fileName = String.format(filePrefix + "Treatment_by_GrpLoc_%d_%d.csv", cMAP_SEED, sIM_SEED);
 			file_grp_loc = new File(seedFileDir, fileName);
-			printGrpCount(countGrpLoc, file_grp_loc,location_name, "Grp_%d_Loc_%s");
+			printGrpCount(countGrpLoc, file_grp_loc, location_name, "Grp_%d_Loc_%s");
 
 			countGrpLoc = (HashMap<Integer, int[][]>) sim_output.get(SIM_OUTOUT_KEY_CUMUL_TREATMENT_MISSED_BY_LOC_GRP);
 			fileName = String.format(filePrefix + "Treatment_Missed_by_GrpLoc_%d_%d.csv", cMAP_SEED, sIM_SEED);
 			file_grp_loc = new File(seedFileDir, fileName);
-			printGrpCount(countGrpLoc, file_grp_loc,location_name, "Grp_%d_Loc_%s");
+			printGrpCount(countGrpLoc, file_grp_loc, location_name, "Grp_%d_Loc_%s");
 
 		}
 
@@ -497,26 +500,24 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 
 			HashMap<Integer, int[][]> countGrpLoc = (HashMap<Integer, int[][]>) sim_output
 					.get(SIM_OUTPUT_KEY_PREVALENCE_BY_LOC_GRP);
-			fileName = String.format(filePrefix + "Infectious_by_GrpLoc_%d_%d.csv", cMAP_SEED, sIM_SEED);			
+			fileName = String.format(filePrefix + "Infectious_by_GrpLoc_%d_%d.csv", cMAP_SEED, sIM_SEED);
 
 			File file_grp_loc = new File(seedFileDir, fileName);
-			printGrpCount(countGrpLoc, file_grp_loc,location_name, "Grp_%d_Loc_%s");
-			
+			printGrpCount(countGrpLoc, file_grp_loc, location_name, "Grp_%d_Loc_%s");
+
 			HashMap<Integer, int[][]> countGrpReg = (HashMap<Integer, int[][]>) sim_output
 					.get(SIM_OUTPUT_KEY_PREVALENCE_BY_REG_GRP);
-			fileName = String.format(filePrefix + "Infectious_by_GrpRegion_%d_%d.csv", cMAP_SEED, sIM_SEED);			
+			fileName = String.format(filePrefix + "Infectious_by_GrpRegion_%d_%d.csv", cMAP_SEED, sIM_SEED);
 
 			File file_grp_reg = new File(seedFileDir, fileName);
 			printGrpCount(countGrpReg, file_grp_reg, region_name, "Grp_%d_%s");
-			
-			
 
 		}
 
 	}
 
-	private void printGrpCount(HashMap<Integer, int[][]> countGrpLoc, File file_grp_loc,
-			String[] subGrpName, String colHeaderFormat) {
+	private void printGrpCount(HashMap<Integer, int[][]> countGrpLoc, File file_grp_loc, String[] subGrpName,
+			String colHeaderFormat) {
 		try {
 			PrintWriter pri_grp_loc = new PrintWriter(file_grp_loc);
 			StringBuilder header = new StringBuilder();
@@ -553,23 +554,18 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 	@Override
 	protected double getTransmissionProb(int currentTime, int inf_id, int pid_inf_src, int pid_inf_tar,
 			int partnershiptDur, int actType, int src_site, int tar_site) {
-		
+
 		double[] actFieldEntry = table_act_frequency[actType][getPersonGrp(pid_inf_src)][getPersonGrp(pid_inf_tar)];
-		
-		double prob_tran = super.getTransmissionProb(currentTime, inf_id, pid_inf_src, pid_inf_tar, partnershiptDur, actType, src_site,
-				tar_site);
-		
-		if(actFieldEntry.length > FIELD_ACT_FREQ_TRAN_ADJ_CITY) {
+
+		double prob_tran = super.getTransmissionProb(currentTime, inf_id, pid_inf_src, pid_inf_tar, partnershiptDur,
+				actType, src_site, tar_site);
+
+		if (actFieldEntry.length > FIELD_ACT_FREQ_TRAN_ADJ_CITY) {
 			prob_tran *= actFieldEntry[FIELD_ACT_FREQ_TRAN_ADJ_CITY
-			                           + getPersonRegion(pid_inf_src, indiv_map.get(pid_inf_src))];						
+					+ getPersonRegion(pid_inf_src, indiv_map.get(pid_inf_src))];
 		}
-		
-		
-		
-		
+
 		return prob_tran;
 	}
-	
-	
 
 }
