@@ -18,7 +18,7 @@ public class Simulation_MenB_Vaccine extends Simulation_MetaPopulation {
 	public static void main(String[] args) throws IOException, InterruptedException {
 		final String USAGE_INFO = String.format(
 				"Usage: java %s - PROP_FILE_DIRECTORY "
-						+ "<-export_skip_backup> <-printProgress> <-seedMap=SEED_MAP>\n",
+						+ "<-export_skip_backup> <-printProgress=TF> <-seedMap=SEED_MAP>\n",
 				Simulation_MenB_Vaccine.class.getName());
 		if (args.length < 1) {
 			System.out.println(USAGE_INFO);
