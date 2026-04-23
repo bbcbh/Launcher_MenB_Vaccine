@@ -101,8 +101,8 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 			} catch (IOException ex) {
 				ex.printStackTrace(System.err);
 
-			}
-
+			}			
+			
 		}
 
 	}
@@ -321,9 +321,8 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 	@SuppressWarnings("unchecked")
 	@Override
 	protected void postTimeStep(int currentTime) {
-		super.postTimeStep(currentTime);
+		super.postTimeStep(currentTime);		
 		// Others steps
-
 		if (currentTime % nUM_TIME_STEPS_PER_SNAP == 0) {
 			String filePrefix = this.getRunnableId() == null ? "" : String.format("%s ", this.getRunnableId());
 
@@ -432,7 +431,7 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 			}
 			countGrpLoc.put(currentTime, export_cumul_treatment_missed);
 
-		}
+		}					
 
 	}
 
@@ -553,8 +552,8 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 
 	@Override
 	protected double getTransmissionProb(int currentTime, int inf_id, int pid_inf_src, int pid_inf_tar,
-			int partnershiptDur, int actType, int src_site, int tar_site) {
-
+			int partnershiptDur, int actType, int src_site, int tar_site) {		
+		
 		double[] actFieldEntry = table_act_frequency[actType][getPersonGrp(pid_inf_src)][getPersonGrp(pid_inf_tar)];
 
 		double prob_tran = super.getTransmissionProb(currentTime, inf_id, pid_inf_src, pid_inf_tar, partnershiptDur,
@@ -567,5 +566,4 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 
 		return prob_tran;
 	}
-
 }
