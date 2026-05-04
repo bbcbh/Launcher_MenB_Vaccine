@@ -100,7 +100,7 @@ public abstract class Runnable_MenB_Vaccine extends Runnable_MetaPopulation_Mult
 			int dose_pt = (dose_time_hist.size() - 1) * (this.NUM_SITE * 2);
 
 			// Use the stat from last dose
-			while (dose_pt > vaccine_properties.length) {
+			while ((dose_pt + this.NUM_SITE * 2) > vaccine_properties.length) {
 				dose_pt -= this.NUM_SITE * 2;
 			}
 
