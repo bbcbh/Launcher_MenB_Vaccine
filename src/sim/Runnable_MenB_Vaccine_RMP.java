@@ -65,6 +65,9 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 	protected RandomGenerator rng_region;
 	protected RandomGenerator rng_ct;
 
+	// Lookup table
+	protected transient HashMap<Integer, HashMap<Integer, double[]>> lookup_contact_trace_by_grp_region = new HashMap<>();
+
 	public Runnable_MenB_Vaccine_RMP(long cMap_seed, long sim_seed, Properties prop) {
 		super(cMap_seed, sim_seed, prop, NUM_INF, NUM_SITE, NUM_ACT);
 		rng_region = rng_vaccine;
@@ -187,30 +190,12 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 
 		// Overwrite to include region rather than risk
 		int[] indiv_stat = indiv_map.get(personId);
-
 		Integer regionCat = getPersonRegion(personId, indiv_stat);
-
-		// Testing rate definitions
-		double[][] testRateDefs = (double[][]) getRunnable_fields()[RUNNABLE_FIELD_TRANSMISSION_TESTING_RATE_BY_RISK_CATEGORIES];
-
-		for (int i = 0; i < testRateDefs.length; i++) {
-			double[] testRateDef = testRateDefs[i];
-			int gIncl = (int) testRateDef[FIELD_TESTING_RATE_BY_RISK_CATEGORIES_GENDER_INCLUDE_INDEX];
-			int iIncl = (int) testRateDef[FIELD_TESTING_RATE_BY_RISK_CATEGORIES_INF_INCLUDE_INDEX];
-			int rIncl = (int) testRateDef[FIELD_TESTING_RATE_BY_RISK_CATEGORIES_RISK_GRP_INCLUDE_INDEX];
-			int sIncl = (int) testRateDef[FIELD_TESTING_RATE_BY_RISK_CATEGORIES_SITE_INCLUDE_INDEX];
-
-			if (((gIncl & (1 << indiv_stat[INDIV_MAP_CURRENT_GRP])) != 0) && ((rIncl & (1 << regionCat)) != 0)
-					&& (last_test_infIncl < 0 || last_test_infIncl == iIncl)
-					&& (last_test_siteIncl < 0 || last_test_siteIncl == sIncl)
-					&& testRateDef[FIELD_TESTING_RATE_BY_RISK_CATEGORIES_TEST_RATE_PARAM_START] != -1) {
-				scheduleNextTestByDefNum(personId, i, lastTestTime, mustTestBefore);
-			}
-
+		
+		int testDefSel = findTestRateDefNumber(indiv_stat[INDIV_MAP_CURRENT_GRP], regionCat, last_test_infIncl, last_test_siteIncl);		
+		if (testDefSel != -1) {
+			scheduleNextTestByDefNum(personId, testDefSel, lastTestTime, mustTestBefore);
 		}
-
-		// super.scheduleNextTest(personId, lastTestTime, mustTestBefore,
-		// last_test_infIncl, last_test_siteIncl);
 	}
 
 	protected Integer getPersonRegion(Integer personId, int[] indiv_stat) {
@@ -242,9 +227,9 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 							+ 1; i < testRateDefs[tR].length; i++) {
 						if (testRateDefs[tR][i] == -1) {
 							int gIncl = (int) testRateDefs[tR][FIELD_TESTING_RATE_BY_RISK_CATEGORIES_GENDER_INCLUDE_INDEX];
-							int rIncl = (int) testRateDefs[tR][FIELD_TESTING_RATE_BY_RISK_CATEGORIES_RISK_GRP_INCLUDE_INDEX]; // RISK
-																																// =
-																																// region
+							// RISK = region
+							int rIncl = (int) testRateDefs[tR][FIELD_TESTING_RATE_BY_RISK_CATEGORIES_RISK_GRP_INCLUDE_INDEX];
+
 							double[] ent = treatment_miss_by_grp.get(gIncl);
 							if (ent == null) {
 								ent = new double[region_name.length]; // 0 = CITY, 1 = REGIONAL, 2 = REMOTE
@@ -256,10 +241,11 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 								}
 							}
 							testRateDefs[tR] = Arrays.copyOf(testRateDefs[tR], i);
-
 							break;
 						}
 					}
+				} else if (testRateDefs[tR][FIELD_TESTING_RATE_BY_RISK_CATEGORIES_TEST_RATE_PARAM_START] == -2) { 
+					lookup_contact_trace_by_grp_region.clear();
 				}
 			}
 		}
@@ -295,13 +281,6 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 			for (Entry<Integer, double[]> grp_inc_ent : treatment_miss_by_grp.entrySet()) {
 				if ((grp_inc_ent.getKey().intValue() & (1 << grp)) != 0) {
 					double[] treatment_miss_by_grp_region = grp_inc_ent.getValue();
-//					int homeLoc = indiv_stat[INDIV_MAP_HOME_LOC];
-//					double[] region_spread = map_regions_spread_by_locGrp.get(homeLoc).get(grp);													
-//					double pRegion = rng_region.nextDouble();
-//					int regPt = Arrays.binarySearch(region_spread, pRegion);
-//					if (regPt < 0) {
-//						regPt = ~regPt;
-//					}
 					treatment_missed = rng_region.nextDouble() < treatment_miss_by_grp_region[regPt];
 					break;
 				}
@@ -319,24 +298,33 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 			// Contact tracing and treatment for partners
 
 			if (cMap.containsVertex(pid) && cMap.degreeOf(pid) > 0) {
-				// Testing rate definitions
-				double[][] testRateDefs = (double[][]) getRunnable_fields()[RUNNABLE_FIELD_TRANSMISSION_TESTING_RATE_BY_RISK_CATEGORIES];
-
-				int reg_pt = getPersonRegion(pid, indiv_stat).intValue();
-				double[] testRateSel = null;
-
-				for (int i = 0; i < testRateDefs.length; i++) {
-					double[] testRateDef = testRateDefs[i];
-					boolean is_contact_trace_test = (int) testRateDef[FIELD_TESTING_RATE_BY_RISK_CATEGORIES_TEST_RATE_PARAM_START] == -2;
-					int gIncl = (int) testRateDef[FIELD_TESTING_RATE_BY_RISK_CATEGORIES_GENDER_INCLUDE_INDEX];
-					// RISK = region
-					int rIncl = (int) testRateDef[FIELD_TESTING_RATE_BY_RISK_CATEGORIES_RISK_GRP_INCLUDE_INDEX];
-					if (is_contact_trace_test && ((gIncl & (1 << grp)) != 0) && ((rIncl & (1 << reg_pt)) != 0)) {
-						testRateSel = testRateDef;
-					}
+				HashMap<Integer, double[]> lookup_contact_trace_by_region = lookup_contact_trace_by_grp_region.get(grp);
+				if (lookup_contact_trace_by_region == null) {
+					lookup_contact_trace_by_region = new HashMap<>();
+					lookup_contact_trace_by_grp_region.put(grp, lookup_contact_trace_by_region);
 				}
+				int reg_pt = getPersonRegion(pid, indiv_stat).intValue();
+				double[] testRateSel = lookup_contact_trace_by_region.get(reg_pt);
+				
+				if (testRateSel == null) {
+					// Search for contact tracing test definition
+					// Testing rate definitions
+					double[][] testRateDefs = (double[][]) getRunnable_fields()[RUNNABLE_FIELD_TRANSMISSION_TESTING_RATE_BY_RISK_CATEGORIES];
+					testRateSel = new double[0];
+					for (int i = 0; i < testRateDefs.length; i++) {
+						double[] testRateDef = testRateDefs[i];
+						boolean is_contact_trace_test = (int) testRateDef[FIELD_TESTING_RATE_BY_RISK_CATEGORIES_TEST_RATE_PARAM_START] == -2;
+						int gIncl = (int) testRateDef[FIELD_TESTING_RATE_BY_RISK_CATEGORIES_GENDER_INCLUDE_INDEX];
+						// RISK = region
+						int rIncl = (int) testRateDef[FIELD_TESTING_RATE_BY_RISK_CATEGORIES_RISK_GRP_INCLUDE_INDEX];
+						if (is_contact_trace_test && ((gIncl & (1 << grp)) != 0) && ((rIncl & (1 << reg_pt)) != 0)) {
+							testRateSel = testRateDef;
+						}
+					}
+					lookup_contact_trace_by_region.put(reg_pt, testRateSel);					
+				}								
 
-				if (testRateSel != null) {
+				if (testRateSel != null && testRateSel.length > 0) {
 					int ct_rate_pt = FIELD_TESTING_RATE_BY_RISK_CATEGORIES_TEST_RATE_PARAM_START + 1;
 					int ct_delay_start_pt = ct_rate_pt + 1;
 					int num_delay_options = (testRateSel.length - ct_delay_start_pt) / 2;
