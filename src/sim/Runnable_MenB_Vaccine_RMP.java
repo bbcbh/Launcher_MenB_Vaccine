@@ -7,12 +7,17 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.apache.commons.math3.random.MersenneTwister;
+
+import person.AbstractIndividualInterface;
+import random.MersenneTwisterRandomGenerator;
 import random.RandomGenerator;
 
 public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
@@ -58,10 +63,12 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 
 	// RNG
 	protected RandomGenerator rng_region;
+	protected RandomGenerator rng_ct;
 
 	public Runnable_MenB_Vaccine_RMP(long cMap_seed, long sim_seed, Properties prop) {
 		super(cMap_seed, sim_seed, prop, NUM_INF, NUM_SITE, NUM_ACT);
 		rng_region = rng_vaccine;
+		rng_ct = new MersenneTwisterRandomGenerator(sim_seed);
 
 		File file_region_info = new File(prop.getProperty("PROP_CONTACT_MAP_LOC"));
 		file_region_info = new File(file_region_info, FILE_REGION_SPREAD);
@@ -101,8 +108,8 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 			} catch (IOException ex) {
 				ex.printStackTrace(System.err);
 
-			}			
-			
+			}
+
 		}
 
 	}
@@ -260,7 +267,7 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 	}
 
 	@Override
-	protected void applyTreatment(int currentTime, int infId, int pid_t, int[][] inf_stage) {
+	protected void applyTreatment(int currentTime_ct, int infId, int pid_t, int[][] inf_stage) {
 
 		if (cumul_treatment_by_loc_grp == null) {
 			cumul_treatment_by_loc_grp = new int[NUM_GRP][location_name.length];
@@ -274,10 +281,12 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 
 		// Test for treatment miss by region
 
-		int pid = Math.abs(pid_t);
+		int pid = Math.abs(pid_t); // Based on symptom if pid_t < 0
+		int currentTime = Math.abs(currentTime_ct); // If < 0 it is from contact tracing
+
 		int[] indiv_stat = indiv_map.get(pid);
 		int grp = indiv_stat[INDIV_MAP_CURRENT_GRP];
-		boolean treatment_missed = pid_t >= 0; // based on symptom if pid_t < 0
+		boolean treatment_missed = pid_t >= 0;
 
 		if (treatment_missed) {
 			int regPt = getPersonRegion(pid, indiv_stat);
@@ -306,6 +315,87 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 				int locPt = map_location.get(Integer.toString(location));
 				cumul_treatment_by_loc_grp[grp][locPt]++;
 			}
+
+			// Contact tracing and treatment for partners
+
+			if (cMap.containsVertex(pid) && cMap.degreeOf(pid) > 0) {
+				// Testing rate definitions
+				double[][] testRateDefs = (double[][]) getRunnable_fields()[RUNNABLE_FIELD_TRANSMISSION_TESTING_RATE_BY_RISK_CATEGORIES];
+
+				int reg_pt = getPersonRegion(pid, indiv_stat).intValue();
+				double[] testRateSel = null;
+
+				for (int i = 0; i < testRateDefs.length; i++) {
+					double[] testRateDef = testRateDefs[i];
+					boolean is_contact_trace_test = (int) testRateDef[FIELD_TESTING_RATE_BY_RISK_CATEGORIES_TEST_RATE_PARAM_START] == -2;
+					int gIncl = (int) testRateDef[FIELD_TESTING_RATE_BY_RISK_CATEGORIES_GENDER_INCLUDE_INDEX];
+					// RISK = region
+					int rIncl = (int) testRateDef[FIELD_TESTING_RATE_BY_RISK_CATEGORIES_RISK_GRP_INCLUDE_INDEX];
+					if (is_contact_trace_test && ((gIncl & (1 << grp)) != 0) && ((rIncl & (1 << reg_pt)) != 0)) {
+						testRateSel = testRateDef;
+					}
+				}
+
+				if (testRateSel != null) {
+					int ct_rate_pt = FIELD_TESTING_RATE_BY_RISK_CATEGORIES_TEST_RATE_PARAM_START + 1;
+					int ct_delay_start_pt = ct_rate_pt + 1;
+					int num_delay_options = (testRateSel.length - ct_delay_start_pt) / 2;
+					int ct_delay_end_pt = num_delay_options + ct_delay_start_pt;
+					// Has matching contact tracing test definition
+					double contact_trace_rate = testRateSel[ct_rate_pt];
+
+					if (contact_trace_rate > 0) {
+						Integer[][] edges = cMap.edgesOf(pid).toArray(new Integer[0][]);
+						for (Integer[] edge : edges) {
+							if (rng_ct.nextDouble() < contact_trace_rate) {
+								int partnerId = (edge[0].equals(pid) ? edge[1] : edge[0]).intValue();
+								int delay_max_pt = Arrays.binarySearch(testRateSel, ct_delay_start_pt, ct_delay_end_pt,
+										rng_ct.nextDouble());
+								if (delay_max_pt < 0) {
+									delay_max_pt = ~delay_max_pt;
+								}
+								delay_max_pt = delay_max_pt + num_delay_options;
+
+								if (delay_max_pt < testRateSel.length
+										&& testRateSel[delay_max_pt] < Double.POSITIVE_INFINITY) {
+									int delay = (int) testRateSel[delay_max_pt - 1]
+											+ rng_ct.nextInt((int) (int) testRateSel[delay_max_pt]
+													- (int) testRateSel[delay_max_pt - 1] + 1);
+									int ct_test_date = currentTime + (int) delay;
+									ArrayList<int[]> day_sch = schedule_testing.get(ct_test_date);
+									if (day_sch == null) {
+										day_sch = new ArrayList<>();
+										schedule_testing.put(ct_test_date, day_sch);
+									}
+
+									// Schedule test for partner
+									int[] test_pair = new int[] { -partnerId, 1, (1 << NUM_SITE) - 1 };
+									int pt_t = Collections.binarySearch(day_sch, test_pair, new Comparator<int[]>() {
+										@Override
+										public int compare(int[] o1, int[] o2) {
+											int res = 0;
+											int pt = 0;
+											while (res == 0 && pt < o1.length) {
+												res = Integer.compare(o1[pt], o2[pt]);
+												pt++;
+											}
+											return res;
+										}
+									});
+									if (pt_t < 0) {
+										day_sch.add(~pt_t, test_pair);
+									} else {
+										int[] org_pair = day_sch.get(pt_t);
+										org_pair[1] |= 1;
+									}
+								} // End of if (delay_max_pt < testRateSel.length ...) {
+							} // End of if (rng_ct.nextDouble() < contact_trace_rate) {
+						} // End of for (Integer[] edge : edges) {
+					}
+				}
+
+			}
+
 		} else {
 			if (grp >= 0) {
 				int location = indiv_map.get(pid)[INDIV_MAP_CURRENT_LOC];
@@ -321,7 +411,7 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 	@SuppressWarnings("unchecked")
 	@Override
 	protected void postTimeStep(int currentTime) {
-		super.postTimeStep(currentTime);		
+		super.postTimeStep(currentTime);
 		// Others steps
 		if (currentTime % nUM_TIME_STEPS_PER_SNAP == 0) {
 			String filePrefix = this.getRunnableId() == null ? "" : String.format("%s ", this.getRunnableId());
@@ -431,7 +521,7 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 			}
 			countGrpLoc.put(currentTime, export_cumul_treatment_missed);
 
-		}					
+		}
 
 	}
 
@@ -552,8 +642,8 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 
 	@Override
 	protected double getTransmissionProb(int currentTime, int inf_id, int pid_inf_src, int pid_inf_tar,
-			int partnershiptDur, int actType, int src_site, int tar_site) {		
-		
+			int partnershiptDur, int actType, int src_site, int tar_site) {
+
 		double[] actFieldEntry = table_act_frequency[actType][getPersonGrp(pid_inf_src)][getPersonGrp(pid_inf_tar)];
 
 		double prob_tran = super.getTransmissionProb(currentTime, inf_id, pid_inf_src, pid_inf_tar, partnershiptDur,
