@@ -60,15 +60,21 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 
 	// RNG
 	protected RandomGenerator rng_region;
-	protected RandomGenerator rng_ct;
+	protected RandomGenerator rng_post_treatment;
+	
+	protected static final int POST_TEST_CT = -2;
+	protected static final int POST_TEST_ABSTINENCE = -3; 
 
 	// Lookup table
 	protected transient HashMap<Integer, HashMap<Integer, double[]>> lookup_contact_trace_by_grp_region = new HashMap<>();
+	protected transient HashMap<Integer, HashMap<Integer, double[]>> lookup_post_test_abstinence_by_grp_region = new HashMap<>();
+	protected transient HashMap<Integer, Integer> post_test_abstinence = new HashMap<>();
+	
 
 	public Runnable_MenB_Vaccine_RMP(long cMap_seed, long sim_seed, Properties prop) {
 		super(cMap_seed, sim_seed, prop, NUM_INF, NUM_SITE, NUM_ACT);
 		rng_region = rng_vaccine;
-		rng_ct = new MersenneTwisterRandomGenerator(sim_seed);
+		rng_post_treatment = new MersenneTwisterRandomGenerator(sim_seed);
 
 		File file_region_info = new File(prop.getProperty("PROP_CONTACT_MAP_LOC"));
 		file_region_info = new File(file_region_info, FILE_REGION_SPREAD);
@@ -241,8 +247,11 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 							break;
 						}
 					}
-				} else if (testRateDefs[tR][FIELD_TESTING_RATE_BY_RISK_CATEGORIES_TEST_RATE_PARAM_START] == -2) { 
+				} else if (testRateDefs[tR][FIELD_TESTING_RATE_BY_RISK_CATEGORIES_TEST_RATE_PARAM_START] == POST_TEST_CT) { 
 					lookup_contact_trace_by_grp_region.clear();
+				} else if (testRateDefs[tR][FIELD_TESTING_RATE_BY_RISK_CATEGORIES_TEST_RATE_PARAM_START] == POST_TEST_ABSTINENCE) {
+					lookup_post_test_abstinence_by_grp_region.clear();
+					
 				}
 			}
 		}
@@ -310,7 +319,7 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 					testRateSel = new double[0];
 					for (int i = 0; i < testRateDefs.length; i++) {
 						double[] testRateDef = testRateDefs[i];
-						boolean is_contact_trace_test = (int) testRateDef[FIELD_TESTING_RATE_BY_RISK_CATEGORIES_TEST_RATE_PARAM_START] == -2;
+						boolean is_contact_trace_test = (int) testRateDef[FIELD_TESTING_RATE_BY_RISK_CATEGORIES_TEST_RATE_PARAM_START] == POST_TEST_CT;
 						int gIncl = (int) testRateDef[FIELD_TESTING_RATE_BY_RISK_CATEGORIES_GENDER_INCLUDE_INDEX];
 						// RISK = region
 						int rIncl = (int) testRateDef[FIELD_TESTING_RATE_BY_RISK_CATEGORIES_RISK_GRP_INCLUDE_INDEX];
@@ -332,10 +341,10 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 					if (contact_trace_rate > 0) {
 						Integer[][] edges = cMap.edgesOf(pid).toArray(new Integer[0][]);
 						for (Integer[] edge : edges) {
-							if (rng_ct.nextDouble() < contact_trace_rate) {
+							if (rng_post_treatment.nextDouble() < contact_trace_rate) {
 								int partnerId = (edge[0].equals(pid) ? edge[1] : edge[0]).intValue();
 								int delay_max_pt = Arrays.binarySearch(testRateSel, ct_delay_start_pt, ct_delay_end_pt,
-										rng_ct.nextDouble());
+										rng_post_treatment.nextDouble());
 								if (delay_max_pt < 0) {
 									delay_max_pt = ~delay_max_pt;
 								}
@@ -344,7 +353,7 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 								if (delay_max_pt < testRateSel.length
 										&& testRateSel[delay_max_pt] < Double.POSITIVE_INFINITY) {
 									int delay = (int) testRateSel[delay_max_pt - 1]
-											+ rng_ct.nextInt((int) (int) testRateSel[delay_max_pt]
+											+ rng_post_treatment.nextInt((int) (int) testRateSel[delay_max_pt]
 													- (int) testRateSel[delay_max_pt - 1] + 1);
 									int ct_test_date = currentTime + (int) delay;
 									ArrayList<int[]> day_sch = schedule_testing.get(ct_test_date);
@@ -378,8 +387,67 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 						} // End of for (Integer[] edge : edges) {
 					}
 				}
-
 			}
+			
+			// Post test abstinence
+			HashMap<Integer, double[]> lookup_post_test_abstinence_by_region = lookup_post_test_abstinence_by_grp_region.get(grp);
+			if(lookup_post_test_abstinence_by_region == null) {
+				lookup_post_test_abstinence_by_region = new HashMap<>();
+				lookup_post_test_abstinence_by_grp_region.put(grp, lookup_post_test_abstinence_by_region);
+			}
+			int reg_pt = getPersonRegion(pid, indiv_stat).intValue();
+			double[] testRateSel = lookup_post_test_abstinence_by_region.get(reg_pt);
+			
+			// Search for test abstinence definition 
+			if (testRateSel == null) {
+				double[][] testRateDefs = (double[][]) getRunnable_fields()[RUNNABLE_FIELD_TRANSMISSION_TESTING_RATE_BY_RISK_CATEGORIES];
+				testRateSel = new double[0];
+				for (int i = 0; i < testRateDefs.length; i++) {
+					double[] testRateDef = testRateDefs[i];
+					boolean is_contact_trace_test = (int) testRateDef[FIELD_TESTING_RATE_BY_RISK_CATEGORIES_TEST_RATE_PARAM_START] == POST_TEST_ABSTINENCE;
+					int gIncl = (int) testRateDef[FIELD_TESTING_RATE_BY_RISK_CATEGORIES_GENDER_INCLUDE_INDEX];
+					// RISK = region
+					int rIncl = (int) testRateDef[FIELD_TESTING_RATE_BY_RISK_CATEGORIES_RISK_GRP_INCLUDE_INDEX];
+					if (is_contact_trace_test && ((gIncl & (1 << grp)) != 0) && ((rIncl & (1 << reg_pt)) != 0)) {
+						testRateSel = testRateDef;
+					}
+				}
+				lookup_post_test_abstinence_by_region.put(reg_pt, testRateSel);	
+			}			
+			if (testRateSel != null && testRateSel.length > 0) {
+				int abstinence_rate_pt = FIELD_TESTING_RATE_BY_RISK_CATEGORIES_TEST_RATE_PARAM_START + 1;
+				int abstinence_dur_start_pt = abstinence_rate_pt + 1;
+				int num_duration_options = (testRateSel.length - abstinence_dur_start_pt) / 2;
+				int abstinence_dur_end_pt = num_duration_options + abstinence_dur_start_pt;
+				
+				// Has matching post test abstinence definition
+				double abstinence_rate = testRateSel[abstinence_rate_pt];
+				if(abstinence_rate > 0) {
+					if (rng_post_treatment.nextDouble() < abstinence_rate) {						
+						int abstinence_dur_max_pt = Arrays.binarySearch(testRateSel, abstinence_dur_start_pt, abstinence_dur_end_pt,
+								rng_post_treatment.nextDouble());
+						
+						if(abstinence_dur_max_pt < 0) {
+							abstinence_dur_max_pt = ~abstinence_dur_max_pt;
+						}
+						
+						abstinence_dur_max_pt = abstinence_dur_max_pt + num_duration_options;
+						
+						if(abstinence_dur_max_pt < testRateSel.length 
+								&& testRateSel[abstinence_dur_max_pt] < Double.POSITIVE_INFINITY) {							
+							int abstinence_dur = (int) testRateSel[abstinence_dur_max_pt - 1]
+									+ rng_post_treatment.nextInt((int) (int) testRateSel[abstinence_dur_max_pt]
+											- (int) testRateSel[abstinence_dur_max_pt - 1] + 1);							
+							post_test_abstinence.put(pid, currentTime + abstinence_dur);
+						}
+						
+					}
+				}									
+				
+			}
+			
+			
+			
 
 		} else {
 			if (grp >= 0) {
@@ -628,6 +696,15 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 	@Override
 	protected double getTransmissionProb(int currentTime, int inf_id, int pid_inf_src, int pid_inf_tar,
 			int partnershiptDur, int actType, int src_site, int tar_site) {
+		
+		int[] partners = new int[] {pid_inf_src, pid_inf_tar};
+		for(int p : partners) {
+			if(post_test_abstinence.containsKey(p)) {
+				if(currentTime < post_test_abstinence.get(p).intValue()) {
+					return 0; // No transmission within abstinence period  
+				}
+			}			
+		}				
 
 		double[] actFieldEntry = table_act_frequency[actType][getPersonGrp(pid_inf_src)][getPersonGrp(pid_inf_tar)];
 
