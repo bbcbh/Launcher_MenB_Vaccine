@@ -21,8 +21,7 @@ public abstract class Runnable_MenB_Vaccine extends Runnable_MetaPopulation_Mult
 
 	public static final String PROP_VACCINE_PROPROPTIES = "PROP_VACCINE_PROPROPTIES";
 	public static final String PROP_VACCINE_ALLOCATIONS = "PROP_VACCINE_ALLOCATIONS";
-	public static final String PROP_SEED_FILE_PATH = "PROP_SEED_FILE_PATH";
-
+	
 	protected static final String SIM_OUTPUT_KEY_VACC_COVERAGE = "SIM_OUTPUT_KEY_VACC_COVERAGE";
 	protected static final int SIM_OUTPUT_INDEX_VACC_COVERAGE_EVER_VACCINATED = 0;
 	protected static final int SIM_OUTPUT_INDEX_VACC_COVERAGE_MULTI_DOSES = SIM_OUTPUT_INDEX_VACC_COVERAGE_EVER_VACCINATED

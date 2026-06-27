@@ -37,7 +37,7 @@ public class Simulation_MenB_Vaccine extends Simulation_MetaPopulation {
 				.get(SimulationInterface.PROP_NAME[SimulationInterface.PROP_POP_TYPE]);
 
 		if (preGenSeedFile != null) {
-			loadedProperties.put(Runnable_MenB_Vaccine.PROP_SEED_FILE_PATH, preGenSeedFile.getAbsolutePath());
+			loadedProperties.put(Runnable_ClusterModel_MultiTransmission.PROP_SEED_FILE_PATH, preGenSeedFile.getAbsolutePath());
 		}
 
 		if (Runnable_MenB_Vaccine_MSM.PROP_TYPE_PATTERN.matcher(popType).matches()) {
