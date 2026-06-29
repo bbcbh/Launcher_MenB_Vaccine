@@ -21,7 +21,7 @@ public abstract class Runnable_MenB_Vaccine extends Runnable_MetaPopulation_Mult
 
 	public static final String PROP_VACCINE_PROPROPTIES = "PROP_VACCINE_PROPROPTIES";
 	public static final String PROP_VACCINE_ALLOCATIONS = "PROP_VACCINE_ALLOCATIONS";
-	
+
 	protected static final String SIM_OUTPUT_KEY_VACC_COVERAGE = "SIM_OUTPUT_KEY_VACC_COVERAGE";
 	protected static final int SIM_OUTPUT_INDEX_VACC_COVERAGE_EVER_VACCINATED = 0;
 	protected static final int SIM_OUTPUT_INDEX_VACC_COVERAGE_MULTI_DOSES = SIM_OUTPUT_INDEX_VACC_COVERAGE_EVER_VACCINATED
@@ -444,11 +444,37 @@ public abstract class Runnable_MenB_Vaccine extends Runnable_MetaPopulation_Mult
 						pWri.println();
 					}
 				}
-
 				pWri.close();
+
 			} catch (IOException e) {
 				e.printStackTrace(System.err);
 			}
+
+			// Print vaccination history
+			Integer[] pids_vacc = vaccination_history.keySet().toArray(new Integer[0]);
+			Arrays.sort(pids_vacc);
+			if (pids_vacc.length > 0) {
+				try {
+					pWri = new PrintWriter(new File(outputBase,
+							String.format(filePrefix + "Vaccination_Hist_%d_%d.csv", cMAP_SEED, sIM_SEED)));
+					pWri.println("ID,Vaccin_History");
+					for (Integer pid : pids_vacc) {
+						ArrayList<Integer> hist = vaccination_history.get(pid);
+						pWri.print(pid.toString());
+						for (Integer timeEnt : hist) {
+							pWri.print(',');
+							pWri.print(timeEnt);
+						}
+						pWri.println();
+					}					
+					pWri.close();
+
+				} catch (IOException e) {
+					e.printStackTrace(System.err);
+				}
+
+			}
+
 		}
 
 	}
