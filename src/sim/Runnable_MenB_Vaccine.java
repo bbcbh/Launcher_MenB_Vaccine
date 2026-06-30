@@ -457,7 +457,7 @@ public abstract class Runnable_MenB_Vaccine extends Runnable_MetaPopulation_Mult
 				try {
 					pWri = new PrintWriter(new File(outputBase,
 							String.format(filePrefix + "Vaccination_Hist_%d_%d.csv", cMAP_SEED, sIM_SEED)));
-					pWri.println("ID,Vaccin_History");
+					pWri.println("ID,Vaccine_History");
 					for (Integer pid : pids_vacc) {
 						ArrayList<Integer> hist = vaccination_history.get(pid);
 						pWri.print(pid.toString());
