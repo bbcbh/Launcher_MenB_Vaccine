@@ -323,7 +323,7 @@ public abstract class Runnable_MenB_Vaccine extends Runnable_MetaPopulation_Mult
 		if (!vaccination_history.containsKey(pid)) {
 			int grp = getVaccineGrp(pid);
 			for (Integer grpInc : current_vaccination_strategy_by_grp_inc.keySet()) {
-				if ((grpInc.intValue() & 1 << grp) != 0) {
+				if (grpInc.intValue() > 0 &&  (grpInc.intValue() & 1 << grp) != 0) {
 					double[] current_vaccine_allocation = current_vaccination_strategy_by_grp_inc.get(grpInc);
 
 					// GLOBAL_START,RISK_GRP_INC,
