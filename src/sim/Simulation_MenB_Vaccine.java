@@ -35,15 +35,36 @@ public class Simulation_MenB_Vaccine extends Simulation_MetaPopulation {
 
 		String popType = (String) loadedProperties
 				.get(SimulationInterface.PROP_NAME[SimulationInterface.PROP_POP_TYPE]);
+		
+		
+		File resDir = baseDir;
 
 		if (preGenSeedFile != null) {
-			loadedProperties.put(Runnable_ClusterModel_MultiTransmission.PROP_SEED_FILE_PATH, preGenSeedFile.getAbsolutePath());
+			loadedProperties.put(Runnable_ClusterModel_MultiTransmission.PROP_SEED_FILE_PATH,
+					preGenSeedFile.getAbsolutePath());
+			resDir = preGenSeedFile.getParentFile();
 		}
 
 		if (Runnable_MenB_Vaccine_MSM.PROP_TYPE_PATTERN.matcher(popType).matches()) {
 			return new Runnable_MenB_Vaccine_MSM(cMap_seed, sim_seed, loadedProperties);
 		} else if (Runnable_MenB_Vaccine_RMP.PROP_TYPE_PATTERN.matcher(popType).matches()) {
-			return new Runnable_MenB_Vaccine_RMP(cMap_seed, sim_seed, loadedProperties);
+			final int num_complete_res_RMP = 6;
+
+			// Check if results already generated
+			Pattern pattern_indiv_result = Pattern.compile(String.format(".*_%d_%d.csv", cMap_seed, sim_seed));
+			File[] res_test = resDir.listFiles(new FileFilter() {
+				@Override
+				public boolean accept(File pathname) {
+					return pathname.isFile() && pattern_indiv_result.matcher(pathname.getName()).matches();
+				}
+			});
+
+			if (res_test.length >= num_complete_res_RMP) {
+				// Already have result
+				return null;
+			} else {
+				return new Runnable_MenB_Vaccine_RMP(cMap_seed, sim_seed, loadedProperties);
+			}
 		} else {
 			return null;
 		}
