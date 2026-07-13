@@ -118,7 +118,7 @@ public abstract class Runnable_MenB_Vaccine extends Runnable_MetaPopulation_Mult
 					// Vaccine efficiency = 0 if already infected twice or more
 					ArrayList<Integer> ng_hist = inf_hist.get(0);
 					if (ng_hist != null) {
-						if (ng_hist.size() / 3 >= 2) {
+						if (ng_hist.size() > 3) {
 							vacc_eff = 0;
 						}
 					}
