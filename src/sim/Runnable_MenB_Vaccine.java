@@ -105,9 +105,27 @@ public abstract class Runnable_MenB_Vaccine extends Runnable_MetaPopulation_Mult
 
 			double rate_wane_per_year = vaccine_properties[dose_pt + this.NUM_SITE + tar_site];
 			double vacc_eff = vaccine_properties[dose_pt + tar_site];
+			int days_since_last_dose = currentTime - dose_time_hist.get(dose_time_hist.size() - 1);
 
-			vacc_eff *= Math.exp((rate_wane_per_year * (currentTime - dose_time_hist.get(dose_time_hist.size() - 1)))
-					/ AbstractIndividualInterface.ONE_YEAR_INT);
+			if (days_since_last_dose > 5 * AbstractIndividualInterface.ONE_YEAR_INT) {
+				vacc_eff = 0;
+			} else {
+				vacc_eff *= Math
+						.exp((rate_wane_per_year * days_since_last_dose) / AbstractIndividualInterface.ONE_YEAR_INT);
+				// Check for infection history
+				ArrayList<ArrayList<Integer>> inf_hist = infection_history.get(pid_inf_tar);
+				if (inf_hist != null) {
+					// Vaccine efficiency = 0 if already infected twice or more
+					ArrayList<Integer> ng_hist = inf_hist.get(0);
+					if (ng_hist != null) {
+						if (ng_hist.size() / 3 >= 2) {
+							vacc_eff = 0;
+						}
+					}
+
+				}
+
+			}
 
 			trans_prob *= (1 - vacc_eff);
 		}
@@ -323,7 +341,7 @@ public abstract class Runnable_MenB_Vaccine extends Runnable_MetaPopulation_Mult
 		if (!vaccination_history.containsKey(pid)) {
 			int grp = getVaccineGrp(pid);
 			for (Integer grpInc : current_vaccination_strategy_by_grp_inc.keySet()) {
-				if (grpInc.intValue() > 0 &&  (grpInc.intValue() & 1 << grp) != 0) {
+				if (grpInc.intValue() > 0 && (grpInc.intValue() & 1 << grp) != 0) {
 					double[] current_vaccine_allocation = current_vaccination_strategy_by_grp_inc.get(grpInc);
 
 					// GLOBAL_START,RISK_GRP_INC,
@@ -466,7 +484,7 @@ public abstract class Runnable_MenB_Vaccine extends Runnable_MetaPopulation_Mult
 							pWri.print(timeEnt);
 						}
 						pWri.println();
-					}					
+					}
 					pWri.close();
 
 				} catch (IOException e) {
