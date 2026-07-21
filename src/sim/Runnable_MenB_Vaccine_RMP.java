@@ -584,9 +584,9 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 		super.postSimulation();
 
 		String key, fileName;
-		HashMap<Integer, int[]> countMap;
+		//HashMap<Integer, int[]> countMap;
 		String filePrefix = this.getRunnableId() == null ? "" : this.getRunnableId();
-		final int[] COL_SEL_INF_GENDER = null;
+		//final int[] COL_SEL_INF_GENDER = null;
 
 		File seedFileDir = this.getSim_prop().containsKey(PROP_SEED_FILE_PATH)
 				? new File((String) this.getSim_prop().get(PROP_SEED_FILE_PATH)).getParentFile()
