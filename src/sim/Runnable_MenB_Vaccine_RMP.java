@@ -594,12 +594,13 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 
 		if ((simSetting & 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_INCIDENCE_FILE) != 0) {
 
-			key = String.format(SIM_OUTPUT_KEY_CUMUL_INCIDENCE,
-					Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_INCIDENCE_FILE);
-			countMap = (HashMap<Integer, int[]>) sim_output.get(key);
-			fileName = String.format(filePrefix + Simulation_ClusterModelTransmission.FILENAME_CUMUL_INCIDENCE_PERSON,
-					cMAP_SEED, sIM_SEED);
-			printCountMap(countMap, fileName, "Inf_%d_Group_%d", new int[] { NUM_INF, NUM_GRP }, COL_SEL_INF_GENDER);
+			
+//			key = String.format(SIM_OUTPUT_KEY_CUMUL_INCIDENCE,
+//					Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_INCIDENCE_FILE);
+//			countMap = (HashMap<Integer, int[]>) sim_output.get(key);
+//			fileName = String.format(filePrefix + Simulation_ClusterModelTransmission.FILENAME_CUMUL_INCIDENCE_PERSON,
+//					cMAP_SEED, sIM_SEED);
+//			printCountMap(countMap, fileName, "Inf_%d_Group_%d", new int[] { NUM_INF, NUM_GRP }, COL_SEL_INF_GENDER);
 
 		}
 
@@ -607,14 +608,14 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 			key = String.format(SIM_OUTPUT_KEY_CUMUL_TREATMENT,
 					Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_TREATMENT_FILE);
 
-			countMap = (HashMap<Integer, int[]>) sim_output.get(key);
-			fileName = String.format(filePrefix + Simulation_ClusterModelTransmission.FILENAME_CUMUL_TREATMENT_PERSON,
-					cMAP_SEED, sIM_SEED);
-			printCountMap(countMap, fileName, "Inf_%d_Grp_%d", new int[] { NUM_INF, NUM_GRP }, COL_SEL_INF_GENDER);
-
-			countMap = (HashMap<Integer, int[]>) sim_output.get(SIM_OUTOUT_KEY_CUMUL_TREATMENT_MISSED);
-			fileName = String.format(filePrefix + "Treatment_Person_Missed_%d_%d.csv", cMAP_SEED, sIM_SEED);
-			printCountMap(countMap, fileName, "Inf_%d_Grp_%d", new int[] { NUM_INF, NUM_GRP }, COL_SEL_INF_GENDER);
+//			countMap = (HashMap<Integer, int[]>) sim_output.get(key);
+//			fileName = String.format(filePrefix + Simulation_ClusterModelTransmission.FILENAME_CUMUL_TREATMENT_PERSON,
+//					cMAP_SEED, sIM_SEED);
+//			printCountMap(countMap, fileName, "Inf_%d_Grp_%d", new int[] { NUM_INF, NUM_GRP }, COL_SEL_INF_GENDER);
+//
+//			countMap = (HashMap<Integer, int[]>) sim_output.get(SIM_OUTOUT_KEY_CUMUL_TREATMENT_MISSED);
+//			fileName = String.format(filePrefix + "Treatment_Person_Missed_%d_%d.csv", cMAP_SEED, sIM_SEED);
+//			printCountMap(countMap, fileName, "Inf_%d_Grp_%d", new int[] { NUM_INF, NUM_GRP }, COL_SEL_INF_GENDER);
 
 			HashMap<Integer, int[][]> countGrpLoc;
 			File file_grp_loc;
