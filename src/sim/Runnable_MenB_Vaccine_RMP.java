@@ -583,7 +583,7 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 	protected void postSimulation() {
 		super.postSimulation();
 
-		String key, fileName;
+		String fileName;
 		//HashMap<Integer, int[]> countMap;
 		String filePrefix = this.getRunnableId() == null ? "" : this.getRunnableId();
 		//final int[] COL_SEL_INF_GENDER = null;
@@ -605,9 +605,8 @@ public class Runnable_MenB_Vaccine_RMP extends Runnable_MenB_Vaccine {
 		}
 
 		if ((simSetting & 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_TREATMENT_FILE) != 0) {
-			key = String.format(SIM_OUTPUT_KEY_CUMUL_TREATMENT,
-					Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_TREATMENT_FILE);
-
+//			key = String.format(SIM_OUTPUT_KEY_CUMUL_TREATMENT,
+//					Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_TREATMENT_FILE);
 //			countMap = (HashMap<Integer, int[]>) sim_output.get(key);
 //			fileName = String.format(filePrefix + Simulation_ClusterModelTransmission.FILENAME_CUMUL_TREATMENT_PERSON,
 //					cMAP_SEED, sIM_SEED);
